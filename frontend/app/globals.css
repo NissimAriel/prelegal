@@ -1,0 +1,467 @@
+:root {
+  --ui-font: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --doc-font: 'Iowan Old Style', 'Palatino Linotype', Palatino, Georgia, serif;
+
+  --ink: #16181d;
+  --ink-soft: #5b6270;
+  --rule: #dfe3ea;
+  --page: #ffffff;
+  --canvas: #f4f5f8;
+  --accent: #1f4fd8;
+  --accent-wash: #eaf0ff;
+  --warn: #8a5a00;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: var(--ui-font);
+  color: var(--ink);
+  background: var(--canvas);
+  line-height: 1.5;
+}
+
+/* ---------- App chrome ---------- */
+
+.siteHeader {
+  display: flex;
+  align-items: baseline;
+  gap: 0.75rem;
+  padding: 0.9rem 1.5rem;
+  background: var(--page);
+  border-bottom: 1px solid var(--rule);
+}
+
+.siteHeader .brand {
+  font-size: 1.05rem;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+}
+
+.siteHeader p {
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: 0.875rem;
+}
+
+.builder {
+  display: grid;
+  grid-template-columns: minmax(320px, 420px) 1fr;
+  align-items: start;
+  gap: 1.5rem;
+  padding: 1.5rem;
+  max-width: 1500px;
+  margin: 0 auto;
+}
+
+@media (max-width: 950px) {
+  .builder {
+    grid-template-columns: 1fr;
+  }
+}
+
+.panel {
+  background: var(--page);
+  border: 1px solid var(--rule);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.panelHeader {
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid var(--rule);
+}
+
+.panelHeader h2 {
+  margin: 0;
+  font-size: 0.95rem;
+}
+
+.panelHeader p {
+  margin: 0.2rem 0 0;
+  font-size: 0.8rem;
+  color: var(--ink-soft);
+}
+
+.documentActions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.documentActions .ready {
+  color: #1a6b3c;
+}
+
+.documentActions .incomplete {
+  color: var(--warn);
+}
+
+.downloadButton {
+  font: inherit;
+  font-weight: 550;
+  padding: 0.55rem 1.1rem;
+  border-radius: 7px;
+  border: 1px solid transparent;
+  background: var(--accent);
+  color: #fff;
+  cursor: pointer;
+}
+
+.downloadButton:hover:not(:disabled) {
+  background: #1a44bb;
+}
+
+.downloadButton:disabled {
+  background: #e7e9ef;
+  color: #9aa1ae;
+  cursor: not-allowed;
+}
+
+/* ---------- Form ---------- */
+
+.mndaForm {
+  padding: 0.25rem 1.25rem 1.5rem;
+}
+
+.mndaForm fieldset {
+  border: none;
+  border-top: 1px solid var(--rule);
+  margin: 0;
+  padding: 1rem 0 0;
+}
+
+.mndaForm fieldset:first-of-type {
+  border-top: none;
+}
+
+.mndaForm legend {
+  font-size: 0.7rem;
+  font-weight: 650;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--ink-soft);
+  padding: 0;
+}
+
+.field {
+  display: block;
+  margin-top: 0.9rem;
+}
+
+.fieldLabel {
+  display: block;
+  font-size: 0.82rem;
+  font-weight: 550;
+}
+
+.fieldHint {
+  display: block;
+  font-size: 0.75rem;
+  color: var(--ink-soft);
+  margin-bottom: 0.3rem;
+}
+
+.field input[type='text'],
+.field input[type='date'],
+.field textarea {
+  width: 100%;
+  font: inherit;
+  font-size: 0.875rem;
+  margin-top: 0.25rem;
+  padding: 0.45rem 0.6rem;
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  background: #fcfcfd;
+  color: inherit;
+  resize: vertical;
+}
+
+.field input:focus-visible,
+.field textarea:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -1px;
+  background: #fff;
+}
+
+.choice {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  margin-top: 0.35rem;
+}
+
+.choice > label {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  font-size: 0.85rem;
+}
+
+.yearsInput {
+  font: inherit;
+  font-size: 0.85rem;
+  width: 3.75rem;
+  padding: 0.2rem 0.4rem;
+  border: 1px solid var(--rule);
+  border-radius: 5px;
+  background: #fcfcfd;
+}
+
+.yearsInput:disabled {
+  background: #f1f2f5;
+  color: #9aa1ae;
+}
+
+/* ---------- Document ---------- */
+
+.document {
+  padding: 2.25rem clamp(1.25rem, 4vw, 3.5rem) 3rem;
+  font-family: var(--doc-font);
+  font-size: 0.97rem;
+  line-height: 1.6;
+  max-width: 46rem;
+  margin: 0 auto;
+}
+
+.document h1 {
+  font-size: 1.5rem;
+  text-align: center;
+  margin: 0 0 1.5rem;
+}
+
+/* Cover Page section headings ("Purpose", "Effective Date", …). */
+.coverSection h2 {
+  font-size: 0.98rem;
+  margin: 1.4rem 0 0.35rem;
+}
+
+/* The "Standard Terms" title, which opens the second part of the agreement. */
+.standardTerms h2 {
+  font-size: 1.3rem;
+  text-align: center;
+  margin: 0 0 1.25rem;
+}
+
+.document p {
+  margin: 0 0 0.75rem;
+}
+
+.document a {
+  color: var(--accent);
+}
+
+.document .hint {
+  display: block;
+  font-family: var(--ui-font);
+  font-size: 0.72rem;
+  font-weight: 400;
+  color: var(--ink-soft);
+}
+
+/* Rendered from the template markdown, so the text sits in a nested <p>. */
+.preamble {
+  font-size: 0.9rem;
+  color: var(--ink-soft);
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--rule);
+}
+
+.preamble p {
+  margin: 0;
+}
+
+/* Free-text fields must print the line breaks the user actually typed. */
+.purpose,
+.modifications {
+  white-space: pre-wrap;
+}
+
+.attest {
+  margin-top: 2rem;
+}
+
+/* A value the user has supplied, highlighted on screen so it is obvious what
+   the form is driving. The highlight is removed for print. */
+/* No horizontal padding: it would read as a space before any punctuation that
+   follows the value, e.g. "Expires 1 year from the Effective Date ." */
+.filled {
+  background: var(--accent-wash);
+  border-radius: 3px;
+  padding: 0.05em 0;
+}
+
+.unfilled {
+  display: inline-block;
+  min-width: 4rem;
+  color: #b0b6c2;
+  border-bottom: 1px solid #ccd2dc;
+}
+
+/* Signature block */
+
+.signatures {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1rem 0 2rem;
+  font-size: 0.9rem;
+}
+
+.signatures th,
+.signatures td {
+  border: 1px solid var(--rule);
+  padding: 0.5rem 0.6rem;
+  text-align: left;
+  vertical-align: top;
+}
+
+.signatures thead th {
+  background: #fafbfc;
+  text-align: center;
+  font-size: 0.8rem;
+}
+
+.signatures tbody th {
+  width: 11rem;
+  font-weight: 550;
+  font-size: 0.85rem;
+}
+
+.signatures .signatureLine {
+  height: 2.75rem;
+}
+
+/* The CC BY attribution closing each half of the agreement: the Cover Page's
+   own element, and the final paragraph of the Standard Terms markdown. */
+.attribution,
+.standardTerms > p:last-child {
+  margin-top: 2rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--rule);
+  font-size: 0.78rem;
+  color: var(--ink-soft);
+}
+
+.attribution p {
+  margin: 0;
+}
+
+/* Standard Terms, rendered from the template markdown */
+
+.termsNote {
+  font-family: var(--ui-font);
+  font-size: 0.78rem;
+  color: var(--ink-soft);
+  background: #fafbfc;
+  border: 1px solid var(--rule);
+  border-radius: 7px;
+  padding: 0.6rem 0.8rem;
+  margin: 0 0 1.25rem;
+}
+
+/* A reference from the Standard Terms back to a Cover Page term. The defined
+   term stays as the printed text — only the on-screen emphasis is added. */
+.coverpageRef {
+  border-bottom: 1px dotted currentColor;
+  cursor: help;
+}
+
+.coverpageRef.set {
+  color: var(--accent);
+}
+
+.coverpageRef.awaiting {
+  color: var(--warn);
+}
+
+.standardTerms ol {
+  padding-left: 1.5rem;
+}
+
+.standardTerms > ol > li {
+  margin-bottom: 0.85rem;
+}
+
+/* ---------- Print: the document only ---------- */
+
+@page {
+  size: letter;
+  margin: 0.9in 0.85in;
+}
+
+@media print {
+  body {
+    background: #fff;
+  }
+
+  /* Everything that is app chrome rather than agreement. */
+  .siteHeader,
+  .formPanel,
+  .documentActions {
+    display: none !important;
+  }
+
+  .builder {
+    display: block;
+    padding: 0;
+    max-width: none;
+  }
+
+  /* `overflow: hidden` has historically truncated multi-page print output. */
+  .panel {
+    border: none;
+    border-radius: 0;
+    background: #fff;
+    overflow: visible;
+  }
+
+  .document {
+    padding: 0;
+    max-width: none;
+    font-size: 10.5pt;
+    line-height: 1.5;
+  }
+
+  /* Print without the on-screen fill highlight, so the download reads as a
+     finished agreement rather than a form. */
+  .filled {
+    background: none;
+    padding: 0;
+  }
+
+  /* The Cover Page references print as plain defined terms, and the guidance
+     note is screen-only scaffolding. */
+  .coverpageRef {
+    color: inherit;
+    border-bottom: none;
+  }
+
+  .termsNote {
+    display: none !important;
+  }
+
+  .document a {
+    color: inherit;
+    text-decoration: none;
+  }
+
+  /* Keep clauses, sections and the signature block intact across pages. */
+  .standardTerms > ol > li,
+  .coverSection,
+  .signatures,
+  .attest {
+    break-inside: avoid;
+  }
+
+  /* The Standard Terms are a distinct part of the agreement — start them on
+     their own page, as Common Paper's own PDFs do. */
+  .standardTermsSection {
+    break-before: page;
+  }
+}
