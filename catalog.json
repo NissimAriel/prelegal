@@ -1,0 +1,84 @@
+{
+  "source": {
+    "provider": "Common Paper",
+    "url": "https://commonpaper.com",
+    "github": "https://github.com/CommonPaper",
+    "license": "CC BY 4.0",
+    "license_url": "https://creativecommons.org/licenses/by/4.0/"
+  },
+  "templates_dir": "templates",
+  "templates": [
+    {
+      "name": "AI Addendum",
+      "description": "Addendum that layers AI-specific terms onto an existing product agreement, covering permitted use of AI services, ownership and handling of Input and Output, model training restrictions, and AI-related warranties and disclaimers.",
+      "filename": "ai-addendum.md",
+      "source_repo": "https://github.com/CommonPaper/AI-Addendum"
+    },
+    {
+      "name": "Business Associate Agreement",
+      "description": "HIPAA Business Associate Agreement (BAA) governing a provider's use and disclosure of Protected Health Information (PHI) on behalf of a covered entity, including safeguards, subcontractor flow-down, breach notification, and termination duties.",
+      "filename": "business-associate-agreement.md",
+      "source_repo": "https://github.com/CommonPaper/BAA"
+    },
+    {
+      "name": "Cloud Service Agreement",
+      "description": "Standard SaaS agreement for selling access to a hosted cloud service, covering access and use rights, customer data, fees and payment, warranties, indemnification, limitation of liability, and term and termination.",
+      "filename": "cloud-service-agreement.md",
+      "source_repo": "https://github.com/CommonPaper/CSA"
+    },
+    {
+      "name": "Data Processing Agreement",
+      "description": "GDPR/CCPA-oriented Data Processing Agreement (DPA) setting out the controller, processor, and subprocessor relationships, processing instructions, security measures, international transfer mechanisms, and audit and deletion obligations.",
+      "filename": "data-processing-agreement.md",
+      "source_repo": "https://github.com/CommonPaper/DPA"
+    },
+    {
+      "name": "Design Partner Agreement",
+      "description": "Agreement for early-access design partnerships, giving a partner pre-release product access in exchange for feedback and program participation, and addressing feedback ownership, confidentiality, and publicity rights.",
+      "filename": "design-partner-agreement.md",
+      "source_repo": "https://github.com/CommonPaper/Design-Partner-Agreement"
+    },
+    {
+      "name": "Mutual Non-Disclosure Agreement — Cover Page",
+      "description": "Fill-in cover page for the Mutual NDA that captures the deal-specific key terms — the parties, purpose, confidentiality period, and any modifications — and incorporates the Mutual NDA Standard Terms by reference.",
+      "filename": "mutual-nda-coverpage.md",
+      "source_repo": "https://github.com/CommonPaper/Mutual-NDA"
+    },
+    {
+      "name": "Mutual Non-Disclosure Agreement — Standard Terms",
+      "description": "Standard Terms for a two-way NDA allowing each party to disclose confidential information for an agreed purpose, covering permitted use and disclosure, exclusions, compelled disclosure, return or destruction of information, and remedies.",
+      "filename": "mutual-nda.md",
+      "source_repo": "https://github.com/CommonPaper/Mutual-NDA"
+    },
+    {
+      "name": "Partnership Agreement",
+      "description": "Commercial partnership agreement in which each party performs defined obligations set out in a cover page, addressing payment and taxes, feedback, intellectual property, confidentiality, and mutual liability terms.",
+      "filename": "partnership-agreement.md",
+      "source_repo": "https://github.com/CommonPaper/Partnership-Agreement"
+    },
+    {
+      "name": "Pilot Agreement",
+      "description": "Short-term paid or unpaid pilot agreement granting a customer access to a product for defined evaluation purposes during a pilot period, with conversion, feedback, confidentiality, and end-of-pilot terms.",
+      "filename": "pilot-agreement.md",
+      "source_repo": "https://github.com/CommonPaper/Pilot-Agreement"
+    },
+    {
+      "name": "Professional Services Agreement",
+      "description": "Master services agreement for professional and consulting work delivered under statements of work (SOWs), covering service performance, deliverables and IP ownership, personnel, fees and expenses, and customer policies.",
+      "filename": "professional-services-agreement.md",
+      "source_repo": "https://github.com/CommonPaper/PSA"
+    },
+    {
+      "name": "Service Level Agreement",
+      "description": "Service Level Agreement (SLA) defining target uptime for a cloud service, how uptime is calculated, excluded downtime, support response commitments, and service credits as the remedy for missed targets.",
+      "filename": "service-level-agreement.md",
+      "source_repo": "https://github.com/CommonPaper/SLA"
+    },
+    {
+      "name": "Software License Agreement",
+      "description": "License agreement for on-premise or self-hosted software, granting a limited non-exclusive license for a subscription period and covering usage restrictions, delivery, support, audit rights, and warranties.",
+      "filename": "software-license-agreement.md",
+      "source_repo": "https://github.com/CommonPaper/Software-License-Agreement"
+    }
+  ]
+}
