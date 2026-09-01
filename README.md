@@ -1,2 +1,1 @@
-# prelegal
-A platform for drafting common legal agrements
+IyBwcmVsZWdhbApBIHBsYXRmb3JtIGZvciBkcmFmdGluZyBjb21tb24gbGVnYWwgYWdyZW1lbnRzCgoqKlN0YXR1czoqKiDwn5rnIEluIHByb2dyZXNzIOKAlCBleHBlY3RlZCBjb21wbGV0aW9uIGluIDEgd2Vlay4K
