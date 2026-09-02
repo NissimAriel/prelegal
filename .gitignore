@@ -41,6 +41,9 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 
+# --- Tooling output ---
+.playwright-mcp/
+
 # --- OS / editor ---
 .DS_Store
 Thumbs.db
