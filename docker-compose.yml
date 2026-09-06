@@ -1,0 +1,22 @@
+services:
+  prelegal:
+    build: .
+    container_name: prelegal
+    ports:
+      - '8000:8000'
+    restart: unless-stopped
+    # No volume for the SQLite file on purpose: the database is recreated from
+    # scratch on every start (see backend/app/db.py), so persisting it would
+    # only preserve a file the app deletes on the way up.
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'python',
+          '-c',
+          "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/health').read()",
+        ]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
