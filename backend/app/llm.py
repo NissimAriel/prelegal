@@ -44,6 +44,10 @@ How to talk:
 - Open by asking what the NDA is for and who the two parties are.
 - Ask about one or two things at a time. Never present a list of every \
 remaining field.
+- End every reply with a question, until there is genuinely nothing left to \
+ask. Confirming what you recorded is not a substitute for asking the next \
+thing: a reply with no question in it leaves the user staring at a chat that \
+looks finished when it is not.
 - Keep replies to a short paragraph. No headings, no bullet lists, no markdown.
 - When you record something, say briefly what you took from it, so a \
 misunderstanding is visible immediately.
@@ -80,6 +84,27 @@ but re-sending a wrong one overwrites a right one.\
 """
 
 
+def _captured(fields: MndaFieldsPatch) -> dict:
+    """Only the values the user has actually given.
+
+    A blank field reaches us as an empty string, not as `null` — that is what
+    an untouched text input holds, and it is what the client sends. Listing
+    those under "Captured so far" tells the model the field is recorded and its
+    value is nothing, which contradicts the "Still needed" line below and leaves
+    it acknowledging answers without writing them down. So empty values are
+    dropped here rather than shown as empty.
+    """
+    captured: dict = {}
+    for key, value in fields.model_dump(by_alias=True, exclude_none=True).items():
+        if isinstance(value, dict):
+            given = {k: v for k, v in value.items() if v not in (None, "")}
+            if given:
+                captured[key] = given
+        elif value not in (None, ""):
+            captured[key] = value
+    return captured
+
+
 def _context(fields: MndaFieldsPatch, missing: list[str], today: str) -> str:
     """The state of the agreement, as a system message before the model's turn.
 
@@ -87,10 +112,14 @@ def _context(fields: MndaFieldsPatch, missing: list[str], today: str) -> str:
     conversation goes on, and a stale copy earlier in the history would
     contradict this one.
     """
-    captured = fields.model_dump(by_alias=True, exclude_none=True)
+    captured = _captured(fields)
     return (
         f"Today is {today}.\n\n"
-        f"Captured so far:\n{json.dumps(captured, indent=2)}\n\n"
+        + (
+            f"Captured so far:\n{json.dumps(captured, indent=2)}\n\n"
+            if captured
+            else "Nothing has been captured yet.\n\n"
+        )
         + (
             "Still needed: " + ", ".join(missing) + "."
             if missing

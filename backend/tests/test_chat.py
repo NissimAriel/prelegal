@@ -128,6 +128,47 @@ def test_the_model_is_told_what_is_captured_and_what_is_missing(
     assert "Effective Date, Governing Law" in context
 
 
+def test_blank_fields_are_not_reported_as_captured(
+    signed_in: tuple[TestClient, dict[str, str], dict], fake_model: FakeCompletion
+) -> None:
+    """An untouched field arrives as "", and must not look like a value.
+
+    Listing it as captured-and-empty contradicts the "Still needed" line in the
+    same message, and the model resolves that by acknowledging answers without
+    recording them.
+    """
+    client, headers, _ = signed_in
+
+    ask(
+        client,
+        headers,
+        fields={
+            "purpose": "",
+            "governingLaw": "Delaware",
+            "party1": {"name": "", "company": "Acme, Inc."},
+            "party2": {"name": "", "company": "", "noticeAddress": ""},
+        },
+        missing=["Purpose", "Party 1 print name"],
+    )
+
+    context = fake_model.conversation[1]["content"]
+    assert '"governingLaw": "Delaware"' in context
+    assert '"company": "Acme, Inc."' in context
+    assert '""' not in context
+    # party2 was entirely blank, so it is not captured at all.
+    assert "party2" not in context
+
+
+def test_an_untouched_agreement_says_so_plainly(
+    signed_in: tuple[TestClient, dict[str, str], dict], fake_model: FakeCompletion
+) -> None:
+    client, headers, _ = signed_in
+
+    ask(client, headers, fields={}, missing=["Purpose"])
+
+    assert "Nothing has been captured yet." in fake_model.conversation[1]["content"]
+
+
 def test_a_full_agreement_still_asks_for_the_terms_to_be_confirmed(
     signed_in: tuple[TestClient, dict[str, str], dict], fake_model: FakeCompletion
 ) -> None:
