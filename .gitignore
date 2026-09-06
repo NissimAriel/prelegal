@@ -29,6 +29,9 @@ out/
 next-env.d.ts
 *.tsbuildinfo
 
+# --- Local database (recreated on every start) ---
+*.db
+
 # --- Env / secrets ---
 .env
 .env.*

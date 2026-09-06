@@ -10,6 +10,15 @@
   --accent: #1f4fd8;
   --accent-wash: #eaf0ff;
   --warn: #8a5a00;
+
+  /* Prelegal brand palette. Used by the app chrome — the sign-in screen and
+     the header. The agreement itself keeps the neutral document styling above,
+     so what prints is a legal document rather than a branded page. */
+  --brand-blue: #209dd7;
+  --brand-purple: #753991;
+  --brand-navy: #032147;
+  --brand-yellow: #ecad0a;
+  --brand-gray: #888888;
 }
 
 * {
@@ -464,4 +473,150 @@ body {
   .standardTermsSection {
     break-before: page;
   }
+}
+
+/* ---------- App chrome ---------- */
+
+.siteHeader .brand {
+  color: var(--brand-navy);
+}
+
+/* Pushed to the far end of the header, away from the branding. */
+.siteHeaderSession {
+  margin-left: auto;
+  display: flex;
+  align-items: baseline;
+  gap: 0.75rem;
+}
+
+.sessionEmail {
+  color: var(--brand-gray);
+}
+
+.linkButton {
+  font: inherit;
+  font-size: 0.875rem;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--brand-blue);
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.linkButton:hover {
+  color: var(--brand-purple);
+}
+
+/* Shown while the session is being confirmed, or while redirecting away. */
+.shellStatus {
+  margin: 4rem auto;
+  text-align: center;
+  color: var(--brand-gray);
+}
+
+/* ---------- Sign-in ---------- */
+
+.loginScreen {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 1.5rem;
+  /* A wash of the brand blue, so the way in reads as the product rather than
+     as another sheet of the document. */
+  background: linear-gradient(160deg, #eaf5fb 0%, var(--canvas) 55%);
+}
+
+.loginCard {
+  width: min(100%, 26rem);
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 2rem;
+  background: var(--page);
+  border: 1px solid var(--rule);
+  border-radius: 12px;
+  box-shadow: 0 8px 30px rgb(3 33 71 / 8%);
+}
+
+.loginBrand {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  color: var(--brand-navy);
+}
+
+/* The yellow reads as an accent here and nowhere else, so it is scoped to the
+   one rule rather than promoted into a shared underline utility. */
+.loginBrand::after {
+  content: '';
+  display: block;
+  width: 2rem;
+  height: 3px;
+  margin-top: 0.4rem;
+  border-radius: 2px;
+  background: var(--brand-yellow);
+}
+
+.loginCard h1 {
+  margin: 0.75rem 0 0;
+  font-size: 1.5rem;
+  letter-spacing: -0.02em;
+  color: var(--brand-navy);
+}
+
+.loginIntro {
+  margin: 0 0 0.75rem;
+  color: var(--brand-gray);
+  font-size: 0.9375rem;
+}
+
+.loginCard label {
+  font-size: 0.8125rem;
+  font-weight: 550;
+  color: var(--ink-soft);
+}
+
+.loginCard input {
+  font: inherit;
+  padding: 0.55rem 0.7rem;
+  border: 1px solid var(--rule);
+  border-radius: 7px;
+  background: var(--page);
+  color: var(--ink);
+}
+
+.loginCard input:focus-visible {
+  outline: 2px solid var(--brand-blue);
+  outline-offset: 1px;
+  border-color: transparent;
+}
+
+.loginError {
+  margin: 0;
+  font-size: 0.875rem;
+  color: #a5271b;
+}
+
+.submitButton {
+  font: inherit;
+  font-weight: 550;
+  margin-top: 0.75rem;
+  padding: 0.6rem 1.1rem;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  background: var(--brand-purple);
+  color: #fff;
+  cursor: pointer;
+}
+
+.submitButton:hover:not(:disabled) {
+  background: #63307b;
+}
+
+.submitButton:disabled {
+  background: #e7e9ef;
+  color: #9aa1ae;
+  cursor: not-allowed;
 }

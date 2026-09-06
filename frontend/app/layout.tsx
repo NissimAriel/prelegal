@@ -2,11 +2,18 @@ import type { Metadata } from 'next'
 import './globals.css'
 
 export const metadata: Metadata = {
-  title: 'Mutual NDA creator — Prelegal',
+  title: 'Prelegal',
   description:
-    'Fill in a few key details and download a completed Common Paper Mutual Non-Disclosure Agreement.',
+    'Draft common legal agreements from curated templates, in your browser.',
 }
 
+/**
+ * The document shell, and nothing else.
+ *
+ * App chrome lives in `components/AppShell` rather than here, because the
+ * sign-in screen has no session and so has no header, user or sign-out control
+ * to show.
+ */
 export default function RootLayout({
   children,
 }: {
@@ -14,15 +21,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body>
-        {/* Branding, not a document heading — the agreement's own title is the
-            page's <h1>, so this must not compete with it in the outline. */}
-        <header className="siteHeader">
-          <p className="brand">Prelegal</p>
-          <p>Mutual Non-Disclosure Agreement</p>
-        </header>
-        {children}
-      </body>
+      <body>{children}</body>
     </html>
   )
 }

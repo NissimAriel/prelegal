@@ -1,0 +1,11 @@
+**/node_modules
+**/.next
+**/out
+**/.venv
+**/__pycache__
+**/*.tsbuildinfo
+.git
+.env
+*.db
+.claude
+.playwright-mcp
