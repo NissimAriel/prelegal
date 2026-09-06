@@ -1,18 +1,19 @@
 'use client'
 
 import { useState } from 'react'
+import ChatPanel from './ChatPanel'
 import CoverPage from './CoverPage'
-import MndaForm from './MndaForm'
 import StandardTerms from './StandardTerms'
 import { defaultFields, missingFields, type MndaFields } from '@/lib/fields'
 import type { CoverPageProse } from '@/lib/templates'
 
 /**
- * The Mutual NDA creator: key-information form on the left, live document
- * preview on the right, download via the browser's print-to-PDF.
+ * The Mutual NDA creator: a conversation with the assistant on the left, live
+ * document preview on the right, download via the browser's print-to-PDF.
  *
- * This component owns the agreement state; the form and the document are both
- * pure views of it, so the preview always reflects exactly what will print.
+ * This component owns the agreement state; the chat proposes changes to it and
+ * the document is a pure view of it, so the preview always reflects exactly
+ * what will print.
  */
 export default function MndaBuilder({
   standardTermsTemplate,
@@ -25,11 +26,6 @@ export default function MndaBuilder({
 }) {
   const [fields, setFields] = useState<MndaFields>(defaultFields)
 
-  const onFieldChange = <K extends keyof MndaFields>(
-    key: K,
-    value: MndaFields[K],
-  ) => setFields((prev) => ({ ...prev, [key]: value }))
-
   const missing = missingFields(fields)
   const isComplete = missing.length === 0
 
@@ -37,12 +33,10 @@ export default function MndaBuilder({
     <div className="builder">
       <aside className="panel formPanel">
         <header className="panelHeader">
-          <h2>Key information</h2>
-          <p>
-            Fill these in and the agreement to the right updates as you type.
-          </p>
+          <h2>Your assistant</h2>
+          <p>Answer in your own words and the agreement fills itself in.</p>
         </header>
-        <MndaForm fields={fields} onFieldChange={onFieldChange} />
+        <ChatPanel fields={fields} onFieldsChange={setFields} />
       </aside>
 
       <main className="panel documentPanel">

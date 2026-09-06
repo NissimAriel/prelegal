@@ -29,6 +29,9 @@ def client(tmp_path: Path, frontend_dir: Path) -> Iterator[TestClient]:
     """A client for an app with a fresh database and no frontend build."""
     settings.database_path = tmp_path / "test.db"
     settings.frontend_dir = frontend_dir
+    # Startup refuses to run without one. No test reaches the real model — the
+    # chat tests replace `app.llm.completion` — so any non-empty value will do.
+    settings.openrouter_api_key = "test-key"
     # `with` runs the lifespan, which is what creates the schema.
     with TestClient(create_app()) as test_client:
         yield test_client
