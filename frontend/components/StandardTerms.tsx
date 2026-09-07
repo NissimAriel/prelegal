@@ -1,42 +1,38 @@
 'use client'
 
-import { useMemo } from 'react'
 import { renderStandardTerms } from '@/lib/render'
-import type { MndaFields } from '@/lib/fields'
+import type { Values } from '@/lib/values'
+import type { DocumentDetail } from '@/lib/documents'
 
 /**
- * The Mutual NDA Standard Terms, rendered verbatim from templates/mutual-nda.md.
- *
- * The legal text is unmodified — see `annotateStandardTerms` for why the Cover
- * Page references are annotated rather than substituted. Highlighted terms
- * point back at the Cover Page, where the user's values actually live.
- *
- * The markup is trusted: the template is local repo content, and every
- * user-supplied value is HTML-escaped before rendering.
+ * The Standard Terms, rendered verbatim from the template with each marked
+ * term annotated with the value behind it. See `lib/render.ts` for why the
+ * prose is annotated rather than substituted.
  */
 export default function StandardTerms({
-  template,
-  fields,
+  document,
+  values,
 }: {
-  template: string
-  fields: MndaFields
+  document: DocumentDetail
+  values: Values
 }) {
-  const html = useMemo(
-    () => renderStandardTerms(template, fields),
-    [template, fields],
-  )
-
   return (
-    <section className="standardTermsSection">
+    <div className="standardTermsWrap">
       <p className="termsNote">
-        These Standard Terms are Common Paper Version 1.0, reproduced without
-        modification. Highlighted terms take their meaning from the Cover Page
-        above — hover one to see the value you entered.
+        These Standard Terms are reproduced without modification. Highlighted
+        terms take their meaning from the cover page above — hover one to see
+        the value you entered.
       </p>
       <article
         className="standardTerms"
-        dangerouslySetInnerHTML={{ __html: html }}
+        dangerouslySetInnerHTML={{
+          __html: renderStandardTerms(
+            document.standardTerms,
+            document.spec,
+            values,
+          ),
+        }}
       />
-    </section>
+    </div>
   )
 }

@@ -1,53 +1,38 @@
 /**
- * Rendering of the Mutual NDA templates for display.
+ * Rendering of the Standard Terms for display.
  *
- * The Standard Terms (templates/mutual-nda.md) are never modified. Common Paper
- * marks every point where they reference the Cover Page with
- * `<span class="coverpage_link">Label</span>`, and those markers keep their
- * defined-term text for two reasons:
+ * The Standard Terms are never modified. Common Paper marks every point where
+ * they refer to a value the parties supply with a `<span class="..._link">`,
+ * and those markers keep their defined-term text for two reasons:
  *
- *  1. Legal integrity. The Cover Page represents that the Standard Terms are
- *     "identical to those posted at commonpaper.com/standards/mutual-nda/1.0".
- *     Editing them would make that representation false. In a real MNDA the
- *     Standard Terms are invariant boilerplate and the Cover Page alone carries
- *     the negotiated values — which is why the Cover Page controls over any
- *     conflict with the Standard Terms.
+ *  1. Legal integrity. A cover page represents that the Standard Terms are
+ *     identical to those Common Paper publishes. Editing them would make that
+ *     representation false. In a real agreement the Standard Terms are
+ *     invariant boilerplate and the cover page alone carries the negotiated
+ *     values — which is why the cover page controls over any conflict.
  *  2. Grammar. The prose is written around the defined term: "commences on the
  *     Effective Date" and "provisions of such Governing Law" read correctly,
  *     whereas substituting yields "commences on the March 4, 2026" and
  *     "provisions of such Delaware".
  *
  * So each marker is annotated rather than replaced — the printed text stays the
- * defined term, and the value the user entered is surfaced on screen.
+ * defined term, and the value behind it is surfaced on screen.
  */
 
 import { marked } from 'marked'
-import {
-  formatDate,
-  mndaTerm,
-  termOfConfidentiality,
-  UNFILLED,
-  type MndaFields,
-} from './fields'
-
-/** Matches a single Cover Page reference marker in the Standard Terms. */
-const COVERPAGE_LINK = /<span class="coverpage_link">([^<]+)<\/span>/g
+import type { DocumentSpec } from './documents'
+import { renderField, UNFILLED, type Values } from './values'
 
 /**
- * The Cover Page value behind each reference in the Standard Terms.
+ * Matches one marker in the Standard Terms.
  *
- * Keys are the exact marker text Common Paper uses in templates/mutual-nda.md.
+ * Five classes exist — keyterms, orderform, coverpage, sow, businessterms —
+ * distinguishing which artifact a value belongs on. That matters to a lawyer
+ * reading the template but not here: all of them mark a value the parties
+ * supply, so all of them are annotated the same way.
  */
-function coverPageValues(fields: MndaFields): Record<string, string> {
-  return {
-    Purpose: fields.purpose.trim() || UNFILLED,
-    'Effective Date': formatDate(fields.effectiveDate),
-    'MNDA Term': mndaTerm(fields).reference,
-    'Term of Confidentiality': termOfConfidentiality(fields).reference,
-    'Governing Law': fields.governingLaw.trim() || UNFILLED,
-    Jurisdiction: fields.jurisdiction.trim() || UNFILLED,
-  }
-}
+const MARKER =
+  /<span class="(?:keyterms|orderform|coverpage|sow|businessterms)_link">([^<]+)<\/span>/g
 
 /** Escapes text for interpolation into the template's HTML. */
 function escapeHtml(value: string): string {
@@ -58,16 +43,16 @@ function escapeHtml(value: string): string {
     .replace(/"/g, '&quot;')
 }
 
-/** Longest tooltip we will emit, so a long Purpose cannot dominate the screen. */
+/** Longest tooltip we will emit, so a long value cannot dominate the screen. */
 const MAX_TOOLTIP = 300
 
 /**
  * Prepares a value for use inside a `title` attribute.
  *
  * Newlines must go: the annotated markup is fed back through the markdown
- * parser, and a value containing a blank line (Purpose is a `<textarea>`) would
- * otherwise end the enclosing list item mid-sentence, spilling the raw
- * attribute text into the agreement and leaving the `<span>` unclosed.
+ * parser, and a value containing a blank line would otherwise end the
+ * enclosing list item mid-sentence, spilling the raw attribute text into the
+ * agreement and leaving the `<span>` unclosed.
  */
 function asAttribute(value: string): string {
   const flat = value.replace(/\s+/g, ' ').trim()
@@ -76,27 +61,58 @@ function asAttribute(value: string): string {
   return escapeHtml(clipped)
 }
 
+/** Strips a possessive so "Customer's" resolves the same as "Customer". */
+const base = (marker: string): string =>
+  marker.replace(/[’']s$/, '').replace(/[’']$/, '')
+
 /**
- * Rewrites each Cover Page marker as a reference to that term, annotated with
- * the value currently entered for it.
+ * What each marked term in the Standard Terms resolves to.
  *
- * An unrecognized label is left untouched rather than dropped, so a reference
- * added to a future version of the Standard Terms still appears in the
- * agreement instead of vanishing from it.
+ * Two kinds of marker end up here. Most name a value a field supplies. The
+ * rest name a party — "Customer", "Provider" — which no field supplies but the
+ * signature block does, so those resolve to that signatory's company.
+ */
+function markerValues(spec: DocumentSpec, values: Values): Map<string, string> {
+  const resolved = new Map<string, string>()
+
+  for (const field of spec.fields) {
+    if (field.markers.length === 0) continue
+    const { reference, filled } = renderField(spec, field, values)
+    for (const marker of field.markers) {
+      resolved.set(base(marker), filled ? reference : UNFILLED)
+    }
+  }
+
+  spec.parties.forEach((role, index) => {
+    const company = values[`party${index + 1}Company`]?.trim()
+    resolved.set(base(role), company || UNFILLED)
+  })
+
+  return resolved
+}
+
+/**
+ * Rewrites each marker as a reference to that term, annotated with the value
+ * currently entered for it.
+ *
+ * An unrecognised label is left untouched rather than dropped, so a term this
+ * document has no field for still appears in the agreement instead of
+ * vanishing from it.
  */
 export function annotateStandardTerms(
   markdown: string,
-  fields: MndaFields,
+  spec: DocumentSpec,
+  values: Values,
 ): string {
-  const values = coverPageValues(fields)
+  const resolved = markerValues(spec, values)
 
-  return markdown.replace(COVERPAGE_LINK, (original, label: string) => {
-    const value = values[label]
+  return markdown.replace(MARKER, (original, label: string) => {
+    const value = resolved.get(base(label))
     if (value === undefined) return original
 
     const isSet = value !== UNFILLED
     const tooltip = isSet
-      ? `${label} on the Cover Page: ${value}`
+      ? `${label}: ${value}`
       : `${label} — not yet entered`
 
     return (
@@ -125,7 +141,8 @@ export function toHtml(markdown: string): string {
 /** Annotates the Standard Terms and renders them to HTML, ready for display. */
 export function renderStandardTerms(
   markdown: string,
-  fields: MndaFields,
+  spec: DocumentSpec,
+  values: Values,
 ): string {
-  return toHtml(annotateStandardTerms(markdown, fields))
+  return toHtml(annotateStandardTerms(markdown, spec, values))
 }

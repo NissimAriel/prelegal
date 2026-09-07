@@ -40,6 +40,10 @@ class Settings:
         self.frontend_dir = _path_from_env(
             "PRELEGAL_FRONTEND_DIR", REPO_ROOT / "frontend" / "out"
         )
+        #: The curated legal templates listed in catalog.json.
+        self.templates_dir = _path_from_env(
+            "PRELEGAL_TEMPLATES_DIR", REPO_ROOT / "templates"
+        )
         #: Read by LiteLLM. Checked at startup — see `main.lifespan`.
         self.openrouter_api_key = os.environ.get("OPENROUTER_API_KEY", "")
 

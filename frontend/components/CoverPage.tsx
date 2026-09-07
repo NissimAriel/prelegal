@@ -1,173 +1,155 @@
 'use client'
 
 import { toHtml } from '@/lib/render'
-import {
-  formatDate,
-  mndaTerm,
-  termOfConfidentiality,
-  UNFILLED,
-  type MndaFields,
-  type Party,
-} from '@/lib/fields'
-import type { CoverPageProse } from '@/lib/templates'
+import { renderField, UNFILLED, type Values } from '@/lib/values'
+import type { DocumentDetail, DocumentSpec, FieldSpec } from '@/lib/documents'
 
 /**
- * The Mutual NDA Cover Page, rendered from the user's answers.
+ * The cover page of whichever document is being drafted.
  *
- * Unlike the Standard Terms — immutable legal prose rendered straight from
- * templates/mutual-nda.md — the Cover Page is a fill-in form artifact:
- * templates/mutual-nda-coverpage.md is a skeleton of bracketed prompts,
- * `- [x]` checkbox pairs and an empty signature table. Its structure is
- * reproduced here so each field renders as a resolved statement of what the
- * parties agreed rather than a form still waiting to be filled.
+ * Unlike the Standard Terms — immutable legal prose rendered straight from a
+ * template — a cover page is a fill-in artifact: the template (where there is
+ * one) is a skeleton of bracketed prompts and an empty signature table. Its
+ * structure is composed here from the document's spec, so each value renders as
+ * a resolved statement of what the parties agreed rather than a form still
+ * waiting to be filled.
  *
- * Its two pieces of substantive text — the preamble and the CC BY attribution —
- * come from the template itself via `extractCoverPageProse`, so no legal wording
- * is duplicated into this component.
+ * The preamble and the CC BY attribution come from the server, which lifts them
+ * from the template, so no legal wording is duplicated into this component.
  */
 
 /** A value the user supplied, or a placeholder until they do. */
-function Value({ children }: { children: string }) {
-  return (
-    <span className={children === UNFILLED ? 'unfilled' : 'filled'}>
-      {children}
-    </span>
-  )
+function Value({ text, filled }: { text: string; filled: boolean }) {
+  return <span className={filled ? 'filled' : 'unfilled'}>{text}</span>
 }
 
-/** One labelled Cover Page section. */
-function Section({
-  title,
-  hint,
-  children,
+/**
+ * One field within a section: what identifies it, then its value.
+ *
+ * How a field is identified depends on the company it keeps. Alone in its
+ * section the heading above already names it, and a second label would just
+ * repeat it. Sharing a section it needs one of its own — otherwise a section
+ * like Acceptance prints three bare values with nothing to say which is the
+ * rejection period and which the resubmission period. A field carrying a
+ * prefix ("Governing Law: ") is already named by that.
+ */
+function Field({
+  spec,
+  field,
+  values,
+  labelled,
 }: {
-  title: string
-  hint?: string
-  children: React.ReactNode
+  spec: DocumentSpec
+  field: FieldSpec
+  values: Values
+  labelled: boolean
 }) {
+  const { cover, filled } = renderField(spec, field, values)
+  const showLabel = labelled && !field.prefix && field.label
+
   return (
-    <section className="coverSection">
-      <h2>
-        {title}
-        {hint ? <span className="hint">{hint}</span> : null}
-      </h2>
-      {children}
-    </section>
+    <p className={field.type === 'longText' ? 'longValue' : undefined}>
+      {showLabel && <span className="fieldName">{field.label}</span>}
+      {field.prefix}
+      <Value text={cover} filled={filled} />
+    </p>
   )
 }
 
 /**
- * The signature block, in the order the template lays it out. `Signature` and
- * `Date` are left blank for wet signing; the rest are filled from the form.
+ * The signature block, in the order the templates lay it out. `Signature` and
+ * `Date` are left blank for wet signing; the rest are filled from the answers.
  */
 const SIGNATURE_ROWS: ReadonlyArray<{
   label: string
   hint?: string
-  get?: (party: Party) => string
+  suffix?: string
 }> = [
   { label: 'Signature' },
-  { label: 'Print Name', get: (p) => p.name },
-  { label: 'Title', get: (p) => p.title },
-  { label: 'Company', get: (p) => p.company },
+  { label: 'Print Name', suffix: 'Name' },
+  { label: 'Title', suffix: 'Title' },
+  { label: 'Company', suffix: 'Company' },
   {
     label: 'Notice Address',
     hint: 'Email or postal address',
-    get: (p) => p.noticeAddress,
+    suffix: 'NoticeAddress',
   },
   { label: 'Date' },
 ]
 
 export default function CoverPage({
-  fields,
-  prose,
+  document,
+  values,
 }: {
-  fields: MndaFields
-  prose: CoverPageProse
+  document: DocumentDetail
+  values: Values
 }) {
-  const parties = [fields.party1, fields.party2]
+  const { spec, preamble, attribution } = document
 
   return (
     <article className="coverPage">
-      <h1>Mutual Non-Disclosure Agreement</h1>
+      <h1>{spec.title}</h1>
 
-      <div
-        className="preamble"
-        dangerouslySetInnerHTML={{ __html: toHtml(prose.preamble) }}
-      />
+      {preamble && (
+        <div
+          className="preamble"
+          dangerouslySetInnerHTML={{ __html: toHtml(preamble) }}
+        />
+      )}
 
-      <Section title="Purpose" hint="How Confidential Information may be used">
-        <p className="purpose">
-          <Value>{fields.purpose.trim() || UNFILLED}</Value>
-        </p>
-      </Section>
+      {spec.sections.map((section) => (
+        <section className="coverSection" key={section.title}>
+          <h2>
+            {section.title}
+            {section.hint ? <span className="hint">{section.hint}</span> : null}
+          </h2>
+          {section.fieldIds.map((id) => {
+            const field = spec.fields.find((f) => f.id === id)
+            return field ? (
+              <Field
+                key={id}
+                spec={spec}
+                field={field}
+                values={values}
+                labelled={section.fieldIds.length > 1}
+              />
+            ) : null
+          })}
+        </section>
+      ))}
 
-      <Section title="Effective Date">
-        <p>
-          <Value>{formatDate(fields.effectiveDate)}</Value>
-        </p>
-      </Section>
-
-      <Section title="MNDA Term" hint="The length of this MNDA">
-        <p>
-          <Value>{mndaTerm(fields).cover}</Value>
-        </p>
-      </Section>
-
-      <Section
-        title="Term of Confidentiality"
-        hint="How long Confidential Information is protected"
-      >
-        <p>
-          <Value>{termOfConfidentiality(fields).cover}</Value>
-        </p>
-      </Section>
-
-      <Section title="Governing Law &amp; Jurisdiction">
-        <p>
-          Governing Law: <Value>{fields.governingLaw.trim() || UNFILLED}</Value>
-        </p>
-        <p>
-          Jurisdiction: courts located in{' '}
-          <Value>{fields.jurisdiction.trim() || UNFILLED}</Value>
-        </p>
-      </Section>
-
-      <Section title="MNDA Modifications">
-        {fields.modifications.trim() ? (
-          <p className="modifications">{fields.modifications.trim()}</p>
-        ) : (
-          <p>None.</p>
-        )}
-      </Section>
-
-      <p className="attest">
-        By signing this Cover Page, each party agrees to enter into this MNDA as
-        of the Effective Date.
-      </p>
+      <p className="attest">{spec.attest}</p>
 
       <table className="signatures">
         <thead>
           <tr>
             <th scope="col" />
-            <th scope="col">Party 1</th>
-            <th scope="col">Party 2</th>
+            {spec.parties.map((party) => (
+              <th scope="col" key={party}>
+                {party}
+              </th>
+            ))}
           </tr>
         </thead>
         <tbody>
-          {SIGNATURE_ROWS.map(({ label, hint, get }) => (
+          {SIGNATURE_ROWS.map(({ label, hint, suffix }) => (
             <tr key={label}>
               <th scope="row">
                 {label}
                 {hint ? <span className="hint">{hint}</span> : null}
               </th>
-              {parties.map((party, i) => (
-                <td
-                  key={i}
-                  className={get ? undefined : 'signatureLine'}
-                >
-                  {get ? <Value>{get(party) || UNFILLED}</Value> : null}
-                </td>
-              ))}
+              {spec.parties.map((party, index) => {
+                const value = suffix
+                  ? values[`party${index + 1}${suffix}`]?.trim()
+                  : undefined
+                return (
+                  <td key={party} className={suffix ? undefined : 'signatureLine'}>
+                    {suffix ? (
+                      <Value text={value || UNFILLED} filled={Boolean(value)} />
+                    ) : null}
+                  </td>
+                )
+              })}
             </tr>
           ))}
         </tbody>
@@ -175,7 +157,7 @@ export default function CoverPage({
 
       <div
         className="attribution"
-        dangerouslySetInnerHTML={{ __html: toHtml(prose.attribution) }}
+        dangerouslySetInnerHTML={{ __html: toHtml(attribution) }}
       />
     </article>
   )

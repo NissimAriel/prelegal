@@ -39,8 +39,19 @@ class FakeCompletion:
         return self.calls[-1]["messages"]
 
 
-def turn(reply: str = "Got it.", **fields: Any) -> str:
-    return json.dumps({"reply": reply, "fields": fields})
+def turn(
+    reply: str = "Got it. What next?",
+    document_type: str | None = None,
+    **values: Any,
+) -> str:
+    """A model response, in the shape Structured Outputs produces."""
+    body: dict[str, Any] = {
+        "reply": reply,
+        "values": [{"id": k, "value": v} for k, v in values.items()],
+    }
+    if document_type:
+        body["document_type"] = document_type
+    return json.dumps(body)
 
 
 @pytest.fixture
@@ -59,7 +70,11 @@ def ask(
     return client.post(
         "/api/chat",
         headers=headers,
-        json={"messages": [{"role": "user", "content": text}], **body},
+        json={
+            "messages": [{"role": "user", "content": text}],
+            "documentType": "mutual-nda",
+            **body,
+        },
     )
 
 
@@ -68,7 +83,7 @@ def test_a_reply_and_the_fields_it_learned_come_back(
 ) -> None:
     client, headers, _ = signed_in
     fake_model.content = turn(
-        "Noted — a partnership evaluation.",
+        "Noted — a partnership evaluation. When does it start?",
         purpose="Evaluating a partnership.",
         governingLaw="Delaware",
     )
@@ -77,38 +92,112 @@ def test_a_reply_and_the_fields_it_learned_come_back(
 
     assert response.status_code == 200
     body = response.json()
-    assert body["reply"] == "Noted — a partnership evaluation."
-    assert body["fields"]["purpose"] == "Evaluating a partnership."
-    assert body["fields"]["governingLaw"] == "Delaware"
+    assert body["reply"].startswith("Noted")
+    assert body["documentType"] == "mutual-nda"
+    assert {v["id"]: v["value"] for v in body["values"]} == {
+        "purpose": "Evaluating a partnership.",
+        "governingLaw": "Delaware",
+    }
 
 
-def test_fields_the_model_did_not_set_come_back_null(
+def test_only_the_values_the_turn_learned_come_back(
     signed_in: tuple[TestClient, dict[str, str], dict], fake_model: FakeCompletion
 ) -> None:
     """A patch, not a replacement: the client keeps what it already had."""
     client, headers, _ = signed_in
-    fake_model.content = turn("Noted.", purpose="Evaluating a partnership.")
+    fake_model.content = turn(purpose="Evaluating a partnership.")
 
-    fields = ask(client, headers).json()["fields"]
+    values = ask(client, headers).json()["values"]
 
-    assert fields["purpose"] == "Evaluating a partnership."
-    assert fields["jurisdiction"] is None
-    assert fields["party1"] is None
+    assert [v["id"] for v in values] == ["purpose"]
 
 
-def test_a_party_is_learned_as_a_nested_object(
+def test_values_for_fields_this_document_lacks_are_dropped(
+    signed_in: tuple[TestClient, dict[str, str], dict], fake_model: FakeCompletion
+) -> None:
+    """A value with no field would be invisible on screen and unexplainable."""
+    client, headers, _ = signed_in
+    fake_model.content = turn(purpose="Evaluating.", targetUptime="99.9%")
+
+    values = ask(client, headers).json()["values"]
+
+    assert [v["id"] for v in values] == ["purpose"]
+
+
+def test_the_document_type_can_be_switched_mid_conversation(
     signed_in: tuple[TestClient, dict[str, str], dict], fake_model: FakeCompletion
 ) -> None:
     client, headers, _ = signed_in
     fake_model.content = turn(
-        "Got it.", party1={"name": "Ada Lovelace", "company": "Acme, Inc."}
+        "That is a Pilot Agreement. How long is the pilot?",
+        document_type="pilot-agreement",
     )
 
-    party1 = ask(client, headers).json()["fields"]["party1"]
+    body = ask(client, headers, "Actually I need a pilot").json()
 
-    assert party1["name"] == "Ada Lovelace"
-    assert party1["company"] == "Acme, Inc."
-    assert party1["noticeAddress"] is None
+    assert body["documentType"] == "pilot-agreement"
+
+
+def test_a_switching_turn_records_nothing(
+    signed_in: tuple[TestClient, dict[str, str], dict], fake_model: FakeCompletion
+) -> None:
+    """The model has not been shown the new document's fields yet.
+
+    Left to name them anyway it half-manages — sets a few, misses others, and
+    describes all of them as recorded. Keeping the ones it got right would
+    leave the rest silently missing behind a reply claiming otherwise.
+    """
+    client, headers, _ = signed_in
+    fake_model.content = turn(
+        "That is a Pilot Agreement. How long is the pilot?",
+        document_type="pilot-agreement",
+        pilotPeriod="90 days",
+        effectiveDate="2026-03-04",
+    )
+
+    body = ask(client, headers, "Actually I need a pilot").json()
+
+    assert body["documentType"] == "pilot-agreement"
+    assert body["values"] == []
+
+
+def test_no_document_chosen_is_a_valid_opening_state(
+    signed_in: tuple[TestClient, dict[str, str], dict], fake_model: FakeCompletion
+) -> None:
+    """The assistant's first job is to work out which document is wanted."""
+    client, headers, _ = signed_in
+    fake_model.content = turn("What are you trying to do?")
+
+    response = client.post(
+        "/api/chat",
+        headers=headers,
+        json={"messages": [{"role": "user", "content": "I need something drawn up"}]},
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["documentType"] is None
+    assert body["values"] == []
+    # With no document there is no field list to give the model.
+    assert "Values this document needs" not in fake_model.conversation[0]["content"]
+    assert "No document has been chosen yet" in fake_model.conversation[0]["content"]
+
+
+def test_an_unknown_document_type_is_rejected(
+    client: TestClient, signed_in: tuple[TestClient, dict[str, str], dict]
+) -> None:
+    client, headers, _ = signed_in
+
+    response = client.post(
+        "/api/chat",
+        headers=headers,
+        json={
+            "messages": [{"role": "user", "content": "Hi"}],
+            "documentType": "employment-contract",
+        },
+    )
+
+    assert response.status_code == 422
 
 
 def test_the_model_is_told_what_is_captured_and_what_is_missing(
@@ -119,7 +208,7 @@ def test_the_model_is_told_what_is_captured_and_what_is_missing(
     ask(
         client,
         headers,
-        fields={"purpose": "Evaluating a partnership."},
+        values=[{"id": "purpose", "value": "Evaluating a partnership."}],
         missing=["Effective Date", "Governing Law"],
     )
 
@@ -142,21 +231,20 @@ def test_blank_fields_are_not_reported_as_captured(
     ask(
         client,
         headers,
-        fields={
-            "purpose": "",
-            "governingLaw": "Delaware",
-            "party1": {"name": "", "company": "Acme, Inc."},
-            "party2": {"name": "", "company": "", "noticeAddress": ""},
-        },
+        values=[
+            {"id": "purpose", "value": ""},
+            {"id": "governingLaw", "value": "Delaware"},
+            {"id": "party1Company", "value": "Acme, Inc."},
+            {"id": "party1Name", "value": "   "},
+        ],
         missing=["Purpose", "Party 1 print name"],
     )
 
     context = fake_model.conversation[1]["content"]
     assert '"governingLaw": "Delaware"' in context
-    assert '"company": "Acme, Inc."' in context
+    assert '"party1Company": "Acme, Inc."' in context
     assert '""' not in context
-    # party2 was entirely blank, so it is not captured at all.
-    assert "party2" not in context
+    assert "party1Name" not in context
 
 
 def test_an_untouched_agreement_says_so_plainly(
@@ -164,7 +252,7 @@ def test_an_untouched_agreement_says_so_plainly(
 ) -> None:
     client, headers, _ = signed_in
 
-    ask(client, headers, fields={}, missing=["Purpose"])
+    ask(client, headers, values=[], missing=["Purpose"])
 
     assert "Nothing has been captured yet." in fake_model.conversation[1]["content"]
 
@@ -183,7 +271,7 @@ def test_a_full_agreement_still_asks_for_the_terms_to_be_confirmed(
 
     context = fake_model.conversation[1]["content"]
     assert "Every required field is filled." in context
-    assert "Confirm the MNDA term" in context
+    assert "Confirm anything you set from a default" in context
 
 
 def test_the_conversation_reaches_the_model_in_order(

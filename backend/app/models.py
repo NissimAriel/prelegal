@@ -4,10 +4,13 @@ Kept in one module because there are few of them and they are shared between
 routers; split by resource once that stops being true.
 """
 
+from enum import StrEnum
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 from pydantic.alias_generators import to_camel
+
+from .documents import SPECS
 
 
 class LoginRequest(BaseModel):
@@ -36,99 +39,97 @@ class LoginResponse(BaseModel):
     user: User
 
 
-class ChatMessage(BaseModel):
+class Camel(BaseModel):
+    """Serialises as camelCase, which is what the client and the model read.
+
+    The document specs do the same (see `documents.schema.Camel`), so one
+    naming convention crosses the API in both directions.
+    """
+
+    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
+
+
+class ChatMessage(Camel):
     """One turn of the conversation, in the order it was said."""
 
     role: Literal["user", "assistant"]
     content: str
 
 
-class Party(BaseModel):
-    """One signatory. Mirrors `Party` in frontend/lib/fields.ts.
+#: The document types the model may choose from, as an enum so a Structured
+#: Output cannot name one that does not exist. Built from the registry so
+#: adding a document type needs no change here.
+DocumentId = StrEnum(
+    "DocumentId", {spec.id.replace("-", "_").upper(): spec.id for spec in SPECS}
+)
 
-    Every field is optional because this is only ever a patch: the model fills
-    in what it has just learned and leaves the rest alone.
+
+class FieldValue(Camel):
+    """One value, addressed by the field id its spec declares.
+
+    Values travel as a list of id/value pairs rather than as an object with a
+    property per field, because the fields differ by document type and a
+    Structured Output needs one fixed schema for all of them.
     """
 
-    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
-
-    name: str | None = None
-    title: str | None = None
-    company: str | None = None
-    notice_address: str | None = None
+    id: str = Field(description="The field's id, exactly as the spec gives it.")
+    value: str = Field(description="The value, as it should appear in the document.")
 
 
-class MndaFieldsPatch(BaseModel):
-    """The fields of a Mutual NDA the model wishes to set this turn.
-
-    Mirrors `MndaFields` in frontend/lib/fields.ts — the names must match, since
-    the frontend merges this straight into its own state. Everything is
-    optional: omitting a field leaves whatever the user already gave.
-    """
-
-    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
-
-    purpose: str | None = None
-    #: ISO `yyyy-mm-dd`, the format `<input type="date">` produces.
-    effective_date: str | None = None
-    term_type: Literal["expires", "untilTerminated"] | None = None
-    # Stated as guidance rather than as `ge`/`le` constraints. A strict schema
-    # does not enforce numeric bounds, so a validator here would not stop a bad
-    # value — it would only turn one into a failed turn, losing the reply along
-    # with it. The frontend clamps instead (`clampYears` in lib/fields.ts).
-    term_years: int | None = Field(default=None, description="Whole years, 1-99.")
-    confidentiality_type: Literal["years", "perpetuity"] | None = None
-    confidentiality_years: int | None = Field(
-        default=None, description="Whole years, 1-99."
-    )
-    governing_law: str | None = None
-    jurisdiction: str | None = None
-    modifications: str | None = None
-    party1: Party | None = None
-    party2: Party | None = None
-
-
-class ChatTurn(BaseModel):
+class ChatTurn(Camel):
     """What the model returns: something to say, and what it learned saying it.
 
-    This is the Structured Output schema, so the docstrings and field names
+    This is the Structured Output schema, so the field names and descriptions
     here are part of the prompt — the model reads them to decide what goes
     where.
     """
 
-    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
-
     reply: str = Field(
-        description="What to say to the user next. One short paragraph."
+        description="What to say to the user next. One short paragraph, ending in a question."
     )
-    fields: MndaFieldsPatch = Field(
-        default_factory=MndaFieldsPatch,
+    document_type: DocumentId | None = Field(
+        default=None,
+        description=(
+            "Set only when starting or switching to a different document type. "
+            "Leave unset to carry on with the current one."
+        ),
+    )
+    values: list[FieldValue] = Field(
+        default_factory=list,
         description="Only the fields learned from the user's latest message.",
     )
 
 
-class ChatRequest(BaseModel):
+class ChatRequest(Camel):
     """A turn of conversation, with everything the model needs to answer it.
 
-    The client holds the conversation and the agreement between turns, so the
+    The client holds the conversation and the document between turns, so the
     server keeps no state of its own — see `routers/chat.py`.
     """
 
     messages: list[ChatMessage] = Field(
         description="The conversation so far, oldest first."
     )
-    fields: MndaFieldsPatch = Field(
-        default_factory=MndaFieldsPatch,
+    document_type: str | None = Field(
+        default=None,
+        description="The document being drafted, or null before one is chosen.",
+    )
+    values: list[FieldValue] = Field(
+        default_factory=list,
         description="Everything captured so far, so the model does not re-ask.",
     )
     missing: list[str] = Field(
         default_factory=list,
-        description="Human-readable labels of required fields still blank.",
+        description="Labels of required fields still blank.",
     )
 
 
-class ChatResponse(BaseModel):
+class ChatResponse(Camel):
     """The model's turn, handed back to the client to render and merge."""
 
     reply: str
-    fields: MndaFieldsPatch
+    #: Always stated, whether or not it changed, so the client never has to
+    #: infer which document it is now drafting. Null while the assistant has
+    #: still to choose one.
+    document_type: str | None
+    values: list[FieldValue]

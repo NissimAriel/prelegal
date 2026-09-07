@@ -2,17 +2,13 @@
  * The chat half of the API contract, and how a model turn becomes state.
  *
  * The conversation lives here in the browser: every turn sends the whole
- * history plus everything captured so far, and the server keeps none of it
- * (see backend/app/routers/chat.py).
+ * history, which document is being drafted and everything captured so far, and
+ * the server keeps none of it (see backend/app/routers/chat.py).
  */
 
 import { request } from './api'
-import {
-  clampYears,
-  missingFields,
-  type MndaFields,
-  type Party,
-} from './fields'
+import type { DocumentSpec } from './documents'
+import { clampYears, missingFields, type Values } from './values'
 
 /** One turn of the conversation, in the order it was said. */
 export interface ChatMessage {
@@ -21,91 +17,81 @@ export interface ChatMessage {
 }
 
 /**
- * The fields a model turn wishes to set — every one optional.
+ * One value the model set, addressed by field id.
  *
- * Mirrors `MndaFieldsPatch` in backend/app/models.py. The names must match
- * `MndaFields` exactly, because a patch is merged straight into it.
+ * A list of pairs rather than an object with a property per field, because the
+ * fields differ by document type and a Structured Output needs one fixed
+ * schema for all of them.
  */
-type PartyPatch = Partial<Record<keyof Party, string | null>>
-
-export type MndaFieldsPatch = {
-  [K in Exclude<keyof MndaFields, 'party1' | 'party2'>]?: MndaFields[K] | null
-} & {
-  party1?: PartyPatch | null
-  party2?: PartyPatch | null
+export interface FieldValue {
+  id: string
+  value: string
 }
 
-interface ChatResponse {
+export interface ChatTurn {
   reply: string
-  fields: MndaFieldsPatch
+  /**
+   * Always stated, so the client never infers which document it is drafting.
+   * Null while the assistant has still to choose one.
+   */
+  documentType: string | null
+  values: FieldValue[]
 }
 
-/** Asks the assistant for its next turn. */
+/**
+ * Asks the assistant for its next turn.
+ *
+ * A null spec is the opening state, not an error: the assistant's first job is
+ * to work out which document the user needs, and until it has there are no
+ * fields to send or to ask about.
+ */
 export const sendChat = (
   messages: ChatMessage[],
-  fields: MndaFields,
-): Promise<ChatResponse> =>
+  spec: DocumentSpec | null,
+  values: Values,
+): Promise<ChatTurn> =>
   request('/chat', {
     method: 'POST',
     body: JSON.stringify({
       messages,
-      fields,
-      missing: missingFields(fields),
+      documentType: spec?.id ?? null,
+      values: spec
+        ? Object.entries(values).map(([id, value]) => ({ id, value }))
+        : [],
+      missing: spec ? missingFields(spec, values) : [],
     }),
   })
 
 /**
- * Whether a patch value is one the model actually set.
+ * Merges the values a turn learned into the document.
  *
- * An empty string counts as unset, not as an instruction to clear the field.
- * The schema asks for `null` when nothing was learned, but models reach for
- * `""` just as readily, and treating that as a value would let a later turn
- * blank out a party name given several turns ago. The cost is that the model
- * cannot clear a field it has already filled — it has to be corrected with a
- * new value instead, which for a legal document is the safer direction to
- * fail in.
- */
-const isSet = (value: unknown): boolean =>
-  value !== null && value !== undefined && value !== ''
-
-/**
- * Merges the fields a turn learned into the agreement.
+ * Empty values are skipped. The schema asks the model for a value only when it
+ * learned one, but models send `""` just as readily, and treating that as a
+ * value would let a later turn blank out a party name given several turns
+ * earlier. The cost is that the model cannot clear a field it has filled — it
+ * has to be corrected with a new value instead, which for a legal document is
+ * the safer direction to fail in.
  *
- * Unset values are skipped rather than written, so a turn that learned only
- * the purpose cannot blank out the parties named three turns ago. Parties
- * merge key by key for the same reason: hearing a company name should not
- * erase the print name beside it.
+ * Values for fields this document does not have are dropped: the server drops
+ * them too, so one arriving here means the two disagree, and writing it would
+ * put something on screen that no field explains.
  */
-export function applyPatch(
-  fields: MndaFields,
-  patch: MndaFieldsPatch,
-): MndaFields {
-  const merged = { ...fields }
+export function applyValues(
+  spec: DocumentSpec,
+  values: Values,
+  patch: FieldValue[],
+): Values {
+  const merged = { ...values }
 
-  for (const [key, value] of Object.entries(patch)) {
-    if (!isSet(value)) continue
-
-    if (key === 'party1' || key === 'party2') {
-      merged[key] = mergeParty(fields[key], value as PartyPatch)
-    } else if (key === 'termYears' || key === 'confidentialityYears') {
-      // The schema asks for 1-99, but a strict schema does not enforce numeric
-      // bounds, so the model can still return 0 — and "Expires 0 years from
-      // the Effective Date" would go out in a signed agreement.
-      merged[key] = clampYears(value)
-    } else {
-      // The backend's schema is generated from the same field names and types,
-      // so a value that arrives under a known key is of that key's type.
-      Object.assign(merged, { [key]: value })
-    }
+  for (const { id, value } of patch) {
+    if (!value?.trim()) continue
+    const field = spec.fields.find((f) => f.id === id)
+    if (!field) continue
+    // A strict schema does not enforce numeric bounds, so the model can still
+    // return 0 — and "Expires 0 years from the Effective Date" would go out in
+    // a signed agreement.
+    merged[id] = field.type === 'years' ? clampYears(value) : value
   }
 
-  return merged
-}
-
-function mergeParty(party: Party, patch: PartyPatch): Party {
-  const merged = { ...party }
-  for (const [key, value] of Object.entries(patch)) {
-    if (isSet(value)) merged[key as keyof Party] = value as string
-  }
   return merged
 }

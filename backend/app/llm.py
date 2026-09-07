@@ -2,7 +2,11 @@
 
 Calls `openrouter/openai/gpt-oss-120b` through LiteLLM with Cerebras pinned as
 the inference provider, and uses Structured Outputs so a turn comes back as
-both something to say and a patch of agreement fields — see `models.ChatTurn`.
+something to say plus the values it learned — see `models.ChatTurn`.
+
+Nothing here knows about any particular document. The prompt is assembled from
+the `DocumentSpec` being drafted and the catalogue of the rest, so a new
+document type changes what the model is told without changing this module.
 """
 
 import json
@@ -11,7 +15,8 @@ import logging
 from litellm import completion
 from pydantic import ValidationError
 
-from .models import ChatMessage, ChatTurn, MndaFieldsPatch
+from .documents import SPECS, DocumentSpec, FieldSpec, FieldType
+from .models import ChatMessage, ChatTurn, FieldValue
 
 logger = logging.getLogger(__name__)
 
@@ -31,17 +36,15 @@ REASONING_EFFORT = "low"
 #: context up front and rejects the request on a metered account.
 MAX_TOKENS = 2000
 
-SYSTEM_PROMPT = """\
-You are a legal assistant helping someone draft a Common Paper Mutual \
-Non-Disclosure Agreement. You are the only interface: there is no form, so \
-everything you need must come out of the conversation.
+CONDUCT = """\
+You are a legal assistant helping someone draft an agreement from a Common \
+Paper template. You are the only interface: there is no form, so everything \
+you need must come out of the conversation.
 
-Your job is to find out what belongs on the Cover Page and record it. You can \
-see the document being filled in beside you, so the user watches each value \
+The document is being filled in beside you, so the user watches each value \
 land as they answer.
 
 How to talk:
-- Open by asking what the NDA is for and who the two parties are.
 - Ask about one or two things at a time. Never present a list of every \
 remaining field.
 - End every reply with a question, until there is genuinely nothing left to \
@@ -52,67 +55,202 @@ looks finished when it is not.
 - When you record something, say briefly what you took from it, so a \
 misunderstanding is visible immediately.
 - If an answer is ambiguous, ask rather than guess.
-- When nothing is left to fill in, say the agreement is ready to download.
+- Record only what the user actually told you. Never invent a name, a date, an \
+amount or a state, and never copy an example out of a field's description into \
+the document.
+- Record anything the user told you earlier that you had no field for at the \
+time, rather than asking for it a second time.
+- Set a value only on the turn you learn it. Leave everything else unset — what \
+is already captured is kept for you, and re-sending a wrong value overwrites a \
+right one.\
+"""
 
-What you may record:
-- Only what the user actually told you. Never invent a party name, a date, a \
-state or a purpose.
-- `purpose` is how Confidential Information may be used, written as a phrase \
-that completes "for the purpose of ...".
-- `effectiveDate` must be `yyyy-mm-dd`. Resolve relative dates like "today" \
-or "next Monday" against the current date given below.
-- `governingLaw` is a US state, as its name alone: "Delaware", not "Delaware \
-law" or "the laws of Delaware".
-- `jurisdiction` is a city or county plus a state abbreviation, e.g. "New \
-Castle, DE". "courts located in" is added for you, so leave it out.
-- `termType` is `expires` when the NDA runs for a fixed number of years, or \
-`untilTerminated` when it runs until someone ends it. `termYears` goes with \
-`expires`.
-- `confidentialityType` is `years` for a fixed protection period or \
-`perpetuity` for forever. `confidentialityYears` goes with `years`.
-- `modifications` is free text and is genuinely optional. Do not push for it.
-- The MNDA term and the term of confidentiality start at the Common Paper \
-default of one year. They are not blank, so they will never appear as missing \
-— confirm both with the user in your own words before you say the agreement is \
-ready.
-- Each party needs a print name, a company and a notice address (an email or \
-a postal address). A title is optional.
+CHOOSING = """\
+Choosing the document:
+- Match what the user describes against the list above, including the other \
+names each document goes by. An abbreviation like "NDA", "SLA", "DPA" or "MSA" \
+names a document in that list; treat it as the document it stands for, never \
+as something you cannot generate.
+- Set `documentType` to the id of the one that fits, and say which you picked \
+and why in a sentence.
+- The turn you pick a document, pick it and nothing else. You have not been \
+shown that document's fields yet, so any value you name is discarded — say \
+which document you chose, ask your first question about it, and do not claim \
+to have recorded anything. Everything the user has already told you is still \
+in front of you and goes in on your next turn.
+- Only if nothing in the list does the job: say plainly that you cannot \
+generate what they asked for, name the closest document you can generate and \
+what it covers instead, and ask whether they want that. Do not pretend a \
+different document is the one they asked for, and do not start filling one in \
+until they agree.
+- If they change their mind later, set `documentType` again. Values already \
+captured that the new document also needs are carried over; the rest are \
+dropped.\
+"""
 
-Set a field only on the turn you learn it. Leave everything else unset — the \
-values already captured are kept for you, and re-sending them wastes nothing \
-but re-sending a wrong one overwrites a right one.\
+#: What the model is told before any document has been chosen.
+#:
+#: The app deliberately holds no document at the start. Naming one here — even
+#: as a placeholder — anchors the model to it: told it was "currently drafting a
+#: Mutual NDA", it would answer a request for early product access by writing
+#: the request into the NDA's purpose field instead of choosing the document
+#: that actually fits.
+UNCHOSEN = """\
+No document has been chosen yet, and choosing one is the only thing to do this \
+turn. Work out what the user is trying to achieve, set `documentType` to the \
+document that fits, and tell them which you picked and why.
+
+End your reply with a question, so the user has something to answer.
+
+Do not record any values this turn, and do not say that you have. You have not \
+been given the chosen document's field list, so anything you name is \
+discarded — and a reply claiming a value was recorded when it was not is worse \
+than saying nothing. The whole conversation stays in front of you: record what \
+the user has already told you on your next turn, without asking again.\
 """
 
 
-def _captured(fields: MndaFieldsPatch) -> dict:
+def _catalogue() -> str:
+    """Every document, with the other names people call it by.
+
+    The aliases matter: without them the model fails to connect "I need an
+    SLA" to a document called "Service Level Agreement" and declines its own
+    catalogue.
+    """
+    lines = []
+    for spec in SPECS:
+        also = f" Also called: {', '.join(spec.aliases)}." if spec.aliases else ""
+        lines.append(f"- {spec.name} (`{spec.id}`): {spec.description}{also}")
+    return "\n".join(lines)
+
+
+def _field_line(field: FieldSpec) -> str:
+    """One field, as a single line the model can act on.
+
+    Built as `id (label) — shape. Notes` so every field reads the same way and
+    the model is not left inferring which part is which.
+    """
+    head = f"`{field.id}`"
+    if field.label:
+        head += f" ({field.label})"
+
+    shape = None
+    if field.type is FieldType.CHOICE:
+        shape = "one of " + ", ".join(f"`{o.id}`" for o in field.options)
+        if field.years_field:
+            shape += f", with `{field.years_field}` set to the number of years"
+    elif field.type is FieldType.YEARS:
+        shape = "a whole number of years, 1 to 99"
+    elif field.type is FieldType.DATE:
+        shape = "a date"
+    if shape:
+        head += f" — {shape}"
+
+    # The hint is written for a person reading a form and the guidance for the
+    # model; both help, but neither should be repeated back as a second
+    # sentence saying the same thing.
+    notes = [note.rstrip(".") for note in (field.hint, field.guidance) if note]
+    if not field.required:
+        # A field holding a default is not optional: it already has a value in
+        # the document, it will never be reported missing, and leaving it
+        # unmentioned means the user signs a term they never discussed. Saying
+        # "do not push for it" here would contradict the standing instruction
+        # to confirm defaults.
+        if field.default:
+            notes.append(
+                f"Starts at `{field.default}` — confirm it with the user "
+                "rather than assuming it"
+            )
+        elif not field.guidance:
+            # Only a fallback. A field with guidance of its own has already
+            # said how it should be treated, and some optional fields do want
+            # asking about — an SLA with no uptime target is a strange SLA.
+            notes.append("Optional — do not push for it")
+
+    return ". ".join([head, *notes]) + "."
+
+
+def system_prompt(spec: DocumentSpec | None) -> str:
+    """Everything the model needs for this turn.
+
+    With no spec the only task is to choose a document, so the field list is
+    omitted entirely — there is nothing yet to fill in.
+    """
+    if spec is None:
+        return "\n\n".join(
+            [CONDUCT, f"Documents you can generate:\n{_catalogue()}", CHOOSING, UNCHOSEN]
+        )
+
+    fields = "\n".join(
+        _field_line(field)
+        for field in spec.fields
+        # A YEARS field is explained by the choice that consumes it.
+        if field.type is not FieldType.YEARS
+    )
+    return "\n\n".join(
+        [
+            CONDUCT,
+            f"Documents you can generate:\n{_catalogue()}",
+            CHOOSING,
+            (
+                f"You are currently drafting: {spec.name}.\n{spec.description}\n"
+                f'In conversation call it "the {spec.short_name}", which is what '
+                "the document calls itself."
+            ),
+            (
+                f"The two signatories are called {spec.parties[0]} and "
+                f"{spec.parties[1]}. Each needs a print name, a company and a "
+                "notice address; a title is optional."
+            ),
+            f"Values this document needs:\n{fields}",
+        ]
+    )
+
+
+def _captured(spec: DocumentSpec | None, values: list[FieldValue]) -> dict[str, str]:
     """Only the values the user has actually given.
 
-    A blank field reaches us as an empty string, not as `null` — that is what
-    an untouched text input holds, and it is what the client sends. Listing
-    those under "Captured so far" tells the model the field is recorded and its
-    value is nothing, which contradicts the "Still needed" line below and leaves
-    it acknowledging answers without writing them down. So empty values are
-    dropped here rather than shown as empty.
+    A blank field arrives as an empty string — that is what an untouched input
+    holds, and what the client sends. Listing those as captured tells the model
+    the field is recorded and its value is nothing, which contradicts the
+    "still needed" line below it and leaves the model acknowledging answers
+    without writing them down.
+
+    Unknown ids are dropped rather than shown: a stale value left over from a
+    previous document type means nothing to this one.
     """
-    captured: dict = {}
-    for key, value in fields.model_dump(by_alias=True, exclude_none=True).items():
-        if isinstance(value, dict):
-            given = {k: v for k, v in value.items() if v not in (None, "")}
-            if given:
-                captured[key] = given
-        elif value not in (None, ""):
-            captured[key] = value
-    return captured
+    if spec is None:
+        return {}
+    return {
+        v.id: v.value
+        for v in values
+        if v.value.strip() and spec.field(v.id) is not None
+    }
 
 
-def _context(fields: MndaFieldsPatch, missing: list[str], today: str) -> str:
-    """The state of the agreement, as a system message before the model's turn.
+def _context(
+    spec: DocumentSpec | None,
+    values: list[FieldValue],
+    missing: list[str],
+    today: str,
+) -> str:
+    """The state of the document, as a system message before the model's turn.
 
     Sent every turn rather than once at the start: the values change as the
     conversation goes on, and a stale copy earlier in the history would
     contradict this one.
     """
-    captured = _captured(fields)
+    if spec is None:
+        return f"Today is {today}."
+
+    captured = _captured(spec, values)
+    uncaptured = (
+        "\n\nThis document also negotiates terms this app does not capture: "
+        + "; ".join(spec.uncaptured)
+        + ". If the user raises one, say it is not covered here."
+        if spec.uncaptured
+        else ""
+    )
     return (
         f"Today is {today}.\n\n"
         + (
@@ -124,16 +262,16 @@ def _context(fields: MndaFieldsPatch, missing: list[str], today: str) -> str:
             "Still needed: " + ", ".join(missing) + "."
             if missing
             else (
-                # Deliberately not "the agreement is ready". The term and the
-                # term of confidentiality hold defaults, so they are never
-                # missing and may never have been discussed — asserting
-                # readiness here would contradict the instruction above to
-                # confirm them, and the model would have to pick a side.
-                "Every required field is filled. Confirm the MNDA term and the "
-                "term of confidentiality with the user if you have not "
-                "already, and then say the agreement is ready."
+                # Deliberately not "the document is ready". Fields holding
+                # defaults are never missing and may never have been discussed,
+                # so asserting readiness here would contradict the instruction
+                # to confirm them and the model would have to pick a side.
+                "Every required field is filled. Confirm anything you set from "
+                "a default rather than from the user, and then say the "
+                "document is ready."
             )
         )
+        + uncaptured
     )
 
 
@@ -142,8 +280,9 @@ class ModelUnavailable(Exception):
 
 
 def draft_turn(
+    spec: DocumentSpec | None,
     messages: list[ChatMessage],
-    fields: MndaFieldsPatch,
+    values: list[FieldValue],
     missing: list[str],
     today: str,
 ) -> ChatTurn:
@@ -154,8 +293,8 @@ def draft_turn(
     network and the model can each disappoint.
     """
     conversation = [
-        {"role": "system", "content": SYSTEM_PROMPT},
-        {"role": "system", "content": _context(fields, missing, today)},
+        {"role": "system", "content": system_prompt(spec)},
+        {"role": "system", "content": _context(spec, values, missing, today)},
         *({"role": m.role, "content": m.content} for m in messages),
     ]
 

@@ -2,32 +2,45 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { ApiError } from '@/lib/api'
-import { applyPatch, sendChat, type ChatMessage } from '@/lib/chat'
-import type { MndaFields } from '@/lib/fields'
+import { sendChat, type ChatMessage, type FieldValue } from '@/lib/chat'
+import type { DocumentSpec } from '@/lib/documents'
+import type { Values } from '@/lib/values'
 
 /**
- * The conversation that fills in the agreement.
+ * The conversation that fills in the document.
  *
  * This is the only way to enter anything: the assistant asks, the user answers,
- * and each turn returns a patch that lands in the document beside it. The
- * agreement itself stays in `MndaBuilder`, so what is on screen is always what
- * will print.
+ * and each turn returns the document it is drafting plus the values it learned.
+ * Both stay in `DocumentBuilder`, so what is on screen is always what will
+ * print.
  */
 
-/** Shown before the user has said anything, so the panel is never empty. */
+/**
+ * Shown before the user has said anything, so the panel is never empty.
+ *
+ * It asks what they need rather than assuming, because the assistant chooses
+ * the document from the answer — and can say so when the answer is something
+ * it cannot draft.
+ */
 const OPENING: ChatMessage = {
   role: 'assistant',
   content:
-    "Hi — I'll help you put together a Mutual NDA. To start: what are the " +
-    'two parties, and what are you sharing information for?',
+    "Hi — I'll help you put together a legal agreement. What do you need, " +
+    'and who are the two parties?',
 }
 
 export default function ChatPanel({
-  fields,
-  onFieldsChange,
+  spec,
+  values,
+  onTurn,
 }: {
-  fields: MndaFields
-  onFieldsChange: (fields: MndaFields) => void
+  /** Null until the assistant has chosen which document to draft. */
+  spec: DocumentSpec | null
+  values: Values
+  onTurn: (
+    documentType: string | null,
+    patch: FieldValue[],
+  ) => Promise<void>
 }) {
   const [messages, setMessages] = useState<ChatMessage[]>([OPENING])
   const [draft, setDraft] = useState('')
@@ -54,9 +67,9 @@ export default function ChatPanel({
     setError(null)
 
     try {
-      const turn = await sendChat(history, fields)
+      const turn = await sendChat(history, spec, values)
       setMessages([...history, { role: 'assistant', content: turn.reply }])
-      onFieldsChange(applyPatch(fields, turn.fields))
+      await onTurn(turn.documentType, turn.values)
     } catch (cause) {
       // The user's message stays in the thread: they said it, and retyping it
       // to retry would be a punishment for someone else's outage.

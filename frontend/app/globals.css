@@ -244,6 +244,63 @@ body {
   white-space: nowrap;
 }
 
+.documentTitle {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.documentPicker select {
+  font: inherit;
+  font-size: 0.8rem;
+  padding: 0.2rem 0.4rem;
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  background: var(--page);
+  color: var(--ink-soft);
+  cursor: pointer;
+  max-width: 15rem;
+}
+
+.documentPicker select:hover:not(:disabled) {
+  border-color: var(--brand-blue);
+  color: var(--ink);
+}
+
+.documentPicker select:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.documentActions .uncaptured {
+  color: var(--brand-gray);
+  font-size: 0.78rem;
+  margin-top: 0.25rem;
+}
+
+/* Shown in the document panel before the assistant has chosen a template. */
+.documentPlaceholder {
+  margin: 0;
+  padding: 4rem 1.5rem;
+  text-align: center;
+  color: var(--brand-gray);
+}
+
+/* Names a value inside a section holding more than one of them. */
+.coverSection .fieldName {
+  font-family: var(--ui-font);
+  font-size: 0.72rem;
+  font-weight: 550;
+  color: var(--ink-soft);
+  display: block;
+}
+
+/* Free-text values keep the line breaks the user actually typed. */
+.coverSection .longValue {
+  white-space: pre-wrap;
+}
+
 /* ---------- Document ---------- */
 
 .document {
@@ -302,18 +359,12 @@ body {
   margin: 0;
 }
 
-/* Free-text fields must print the line breaks the user actually typed. */
-.purpose,
-.modifications {
-  white-space: pre-wrap;
-}
-
 .attest {
   margin-top: 2rem;
 }
 
 /* A value the user has supplied, highlighted on screen so it is obvious what
-   the form is driving. The highlight is removed for print. */
+   the conversation is driving. The highlight is removed for print. */
 /* No horizontal padding: it would read as a space before any punctuation that
    follows the value, e.g. "Expires 1 year from the Effective Date ." */
 .filled {
@@ -428,7 +479,8 @@ body {
   /* Everything that is app chrome rather than agreement. */
   .siteHeader,
   .formPanel,
-  .documentActions {
+  .documentActions,
+  .documentPicker {
     display: none !important;
   }
 
