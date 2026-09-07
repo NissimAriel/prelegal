@@ -1,34 +1,60 @@
-"""Sign in, identify, and sign out.
-
-Login is a stub — see `app.auth` for what is and is not real about it.
-"""
+"""Registering, signing in, identifying, and signing out."""
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Response, status
 
 from ..auth import (
+    EmailTaken,
+    authenticate,
     create_session,
+    create_user,
     current_token,
     current_user,
     delete_session,
-    find_or_create_user,
 )
-from ..models import LoginRequest, LoginResponse, User
+from ..models import Credentials, LoginResponse, User
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 
-@router.post("/login")
-def login(body: LoginRequest) -> LoginResponse:
-    """Signs a user in by email alone, creating them if they are new.
-
-    No credential is checked. The email is normalized to lower case so that
-    signing in twice with different capitalization is one user and one row,
-    matching the `COLLATE NOCASE` uniqueness on the column.
-    """
-    user = find_or_create_user(body.email.lower())
+def _signed_in(user: User) -> LoginResponse:
     return LoginResponse(token=create_session(user.id), user=user)
+
+
+@router.post("/signup", status_code=status.HTTP_201_CREATED)
+def signup(body: Credentials) -> LoginResponse:
+    """Registers a new account and signs it in.
+
+    The email is normalised to lower case so that registering twice with
+    different capitalisation is one account, matching the `COLLATE NOCASE`
+    uniqueness on the column.
+    """
+    try:
+        user = create_user(body.email.lower(), body.password)
+    except EmailTaken:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="That email already has an account. Sign in instead.",
+        ) from None
+    return _signed_in(user)
+
+
+@router.post("/login")
+def login(body: Credentials) -> LoginResponse:
+    """Signs in an existing account.
+
+    An unknown email and a wrong password give the same answer on purpose:
+    telling them apart would turn this endpoint into a way of discovering
+    which addresses are registered.
+    """
+    user = authenticate(body.email.lower(), body.password)
+    if user is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="That email and password do not match.",
+        )
+    return _signed_in(user)
 
 
 @router.get("/me")

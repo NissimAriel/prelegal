@@ -12,7 +12,7 @@ from fastapi import APIRouter, FastAPI
 
 from .config import settings
 from .db import reset_database
-from .routers import auth, chat, documents, health
+from .routers import auth, chat, documents, drafts, health
 from .static import mount_frontend
 
 logging.basicConfig(level=logging.INFO)
@@ -56,6 +56,7 @@ def create_app() -> FastAPI:
     api.include_router(auth.router)
     api.include_router(chat.router)
     api.include_router(documents.router)
+    api.include_router(drafts.router)
     app.include_router(api)
 
     # Last: the frontend mount matches every path, so it must not shadow the API.

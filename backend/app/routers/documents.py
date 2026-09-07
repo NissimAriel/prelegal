@@ -11,7 +11,7 @@ from fastapi import APIRouter, HTTPException, status
 from .. import documents
 from ..documents import DocumentSpec
 from ..models import Camel
-from ..templates import prose_for, read_template
+from ..templates import DRAFT_NOTICE, prose_for, read_template
 
 router = APIRouter(prefix="/documents", tags=["documents"])
 
@@ -40,6 +40,9 @@ class DocumentDetail(Camel):
     preamble: str
     #: The CC BY 4.0 attribution, which the licence requires.
     attribution: str
+    #: The warning that this is an unreviewed draft. Served rather than written
+    #: into the client so the wording has one source.
+    disclaimer: str = DRAFT_NOTICE
 
 
 @router.get("")

@@ -76,6 +76,8 @@ export interface DocumentDetail {
   standardTerms: string
   preamble: string
   attribution: string
+  /** The warning that this is an unreviewed draft, worded by the server. */
+  disclaimer: string
 }
 
 export const fetchCatalogue = (): Promise<DocumentSummary[]> =>

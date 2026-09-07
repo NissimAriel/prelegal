@@ -33,6 +33,7 @@ export default function ChatPanel({
   spec,
   values,
   onTurn,
+  initialMessages,
 }: {
   /** Null until the assistant has chosen which document to draft. */
   spec: DocumentSpec | null
@@ -40,9 +41,14 @@ export default function ChatPanel({
   onTurn: (
     documentType: string | null,
     patch: FieldValue[],
+    messages: ChatMessage[],
   ) => Promise<void>
+  /** The transcript of a reopened draft, so it carries on rather than restarts. */
+  initialMessages?: ChatMessage[]
 }) {
-  const [messages, setMessages] = useState<ChatMessage[]>([OPENING])
+  const [messages, setMessages] = useState<ChatMessage[]>(
+    initialMessages?.length ? initialMessages : [OPENING],
+  )
   const [draft, setDraft] = useState('')
   const [thinking, setThinking] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -68,8 +74,14 @@ export default function ChatPanel({
 
     try {
       const turn = await sendChat(history, spec, values)
-      setMessages([...history, { role: 'assistant', content: turn.reply }])
-      await onTurn(turn.documentType, turn.values)
+      const transcript: ChatMessage[] = [
+        ...history,
+        { role: 'assistant', content: turn.reply },
+      ]
+      setMessages(transcript)
+      // The transcript goes with the turn so the draft is saved with the
+      // conversation that produced it, not one turn behind.
+      await onTurn(turn.documentType, turn.values, transcript)
     } catch (cause) {
       // The user's message stays in the thread: they said it, and retyping it
       // to retry would be a punishment for someone else's outage.

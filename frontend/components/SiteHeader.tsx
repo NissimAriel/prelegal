@@ -1,5 +1,6 @@
 'use client'
 
+import Link from 'next/link'
 import { logout } from '@/lib/api'
 import { clearToken } from '@/lib/session'
 import type { User } from '@/lib/api'
@@ -40,12 +41,14 @@ export default function SiteHeader({
     <header className="siteHeader">
       <p className="brand">Prelegal</p>
       {subtitle && <p>{subtitle}</p>}
-      <div className="siteHeaderSession">
+      <nav className="siteHeaderSession">
+        <Link href="/documents/">Your agreements</Link>
+        <Link href="/draft/">New agreement</Link>
         <p className="sessionEmail">{user.email}</p>
         <button type="button" className="linkButton" onClick={signOut}>
           Sign out
         </button>
-      </div>
+      </nav>
     </header>
   )
 }

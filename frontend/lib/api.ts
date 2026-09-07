@@ -64,9 +64,24 @@ export async function request<T>(
   return response.status === 204 ? (undefined as T) : await response.json()
 }
 
-/** Signs in by email alone. Any valid address is accepted — login is a stub. */
-export const login = (email: string): Promise<{ token: string; user: User }> =>
-  request('/auth/login', { method: 'POST', body: JSON.stringify({ email }) })
+interface SignedIn {
+  token: string
+  user: User
+}
+
+/** Registers a new account and signs it in. 409 if the email is taken. */
+export const signup = (email: string, password: string): Promise<SignedIn> =>
+  request('/auth/signup', {
+    method: 'POST',
+    body: JSON.stringify({ email, password }),
+  })
+
+/** Signs in an existing account. 401 if the credentials do not match. */
+export const login = (email: string, password: string): Promise<SignedIn> =>
+  request('/auth/login', {
+    method: 'POST',
+    body: JSON.stringify({ email, password }),
+  })
 
 /** The signed-in user. Throws `ApiError` with status 401 if the token is stale. */
 export const me = (): Promise<User> => request('/auth/me')

@@ -17,9 +17,12 @@ from .config import settings
 
 SCHEMA = """
 CREATE TABLE users (
-    id         INTEGER PRIMARY KEY AUTOINCREMENT,
-    email      TEXT NOT NULL UNIQUE COLLATE NOCASE,
-    created_at TEXT NOT NULL
+    id            INTEGER PRIMARY KEY AUTOINCREMENT,
+    email         TEXT NOT NULL UNIQUE COLLATE NOCASE,
+    -- `scrypt$n$r$p$salt$key`, so the cost parameters travel with the hash and
+    -- can be raised later without invalidating existing ones. See `app.auth`.
+    password_hash TEXT NOT NULL,
+    created_at    TEXT NOT NULL
 );
 
 CREATE TABLE sessions (
@@ -27,6 +30,27 @@ CREATE TABLE sessions (
     user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     created_at TEXT NOT NULL
 );
+
+-- One agreement a user is drafting, saved after every turn so nothing is lost
+-- to a closed tab. `field_values` and `messages` are JSON: their shape depends
+-- on the document type, and nothing queries inside them. Not `values`, which
+-- SQLite reserves for INSERT.
+CREATE TABLE drafts (
+    id            INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id       INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    document_type TEXT NOT NULL,
+    -- Derived from the parties on every write, so the list of drafts reads as
+    -- agreements rather than as template names repeated. Stored rather than
+    -- computed on read so listing does not have to parse every draft's values.
+    title         TEXT NOT NULL,
+    field_values  TEXT NOT NULL,
+    messages      TEXT NOT NULL,
+    created_at    TEXT NOT NULL,
+    updated_at    TEXT NOT NULL
+);
+
+-- Every query lists one user's drafts, newest first.
+CREATE INDEX drafts_by_user ON drafts (user_id, updated_at DESC);
 """
 
 

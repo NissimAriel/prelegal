@@ -16,7 +16,8 @@ def test_reset_discards_existing_data(tmp_path: Path) -> None:
     connection = sqlite3.connect(settings.database_path)
     with connection:
         connection.execute(
-            "INSERT INTO users (email, created_at) VALUES ('ada@example.com', 'now')"
+            "INSERT INTO users (email, password_hash, created_at)"
+            " VALUES ('ada@example.com', 'scrypt$...', 'now')"
         )
     connection.close()
 
@@ -36,7 +37,10 @@ def test_restarting_the_app_wipes_the_database(
     settings.frontend_dir = frontend_dir
 
     with TestClient(create_app()) as client:
-        client.post("/api/auth/login", json={"email": "ada@example.com"})
+        client.post(
+            "/api/auth/signup",
+            json={"email": "ada@example.com", "password": "correct-horse-battery"},
+        )
 
     with TestClient(create_app()) as client:
         connection = sqlite3.connect(settings.database_path)
