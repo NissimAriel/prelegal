@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import ChatPanel from './ChatPanel'
 import CoverPage from './CoverPage'
+import DocumentPicker from './DocumentPicker'
 import StandardTerms from './StandardTerms'
 import { fetchDocument, type DocumentDetail } from '@/lib/documents'
 import { applyValues, type FieldValue } from '@/lib/chat'
@@ -30,6 +31,31 @@ export default function DocumentBuilder() {
   const [document, setDocument] = useState<DocumentDetail | null>(null)
   const [values, setValues] = useState<Values>({})
   const [error, setError] = useState<string | null>(null)
+  const [busy, setBusy] = useState(false)
+
+  /**
+   * Loads a document, carrying over the values the new one also asks for.
+   *
+   * Shared by the assistant and the picker: switching is the same operation
+   * whoever asked for it, and the values that survive should not depend on
+   * which of them did.
+   */
+  const switchTo = async (documentId: string, patch: FieldValue[] = []) => {
+    setBusy(true)
+    try {
+      const next = await fetchDocument(documentId)
+      const carried = document
+        ? carryOver(next.spec, values)
+        : defaultValues(next.spec)
+      setDocument(next)
+      setValues(applyValues(next.spec, carried, patch))
+      setError(null)
+    } catch {
+      setError('Could not load that document’s template. Please try again.')
+    } finally {
+      setBusy(false)
+    }
+  }
 
   /**
    * Applies one turn: the document it named, then the values it set.
@@ -48,20 +74,7 @@ export default function DocumentBuilder() {
     if (documentType === null) return
 
     if (documentType !== document?.spec.id) {
-      try {
-        const next = await fetchDocument(documentType)
-        // Carried over from the previous document, if there was one: the
-        // parties and the effective date usually survive a change of mind.
-        const carried = document
-          ? carryOver(next.spec, values)
-          : defaultValues(next.spec)
-        setDocument(next)
-        setValues(applyValues(next.spec, carried, patch))
-      } catch {
-        setError(
-          'Could not load that document’s template. Please try again.',
-        )
-      }
+      await switchTo(documentType, patch)
       return
     }
 
@@ -88,7 +101,14 @@ export default function DocumentBuilder() {
       <main className="panel documentPanel">
         <header className="panelHeader documentActions">
           <div>
-            <h2>{document ? document.spec.name : 'Your document'}</h2>
+            <div className="documentTitle">
+              <h2>{document ? document.spec.name : 'Your document'}</h2>
+              <DocumentPicker
+                selected={document?.spec.id ?? null}
+                onSelect={(id) => void switchTo(id)}
+                disabled={busy}
+              />
+            </div>
             {!document ? (
               <p>Tell the assistant what you need and it will pick a template.</p>
             ) : isComplete ? (
