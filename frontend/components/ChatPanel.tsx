@@ -33,6 +33,8 @@ export default function ChatPanel({
   spec,
   values,
   onTurn,
+  onThinking,
+  initialMessages,
 }: {
   /** Null until the assistant has chosen which document to draft. */
   spec: DocumentSpec | null
@@ -40,11 +42,24 @@ export default function ChatPanel({
   onTurn: (
     documentType: string | null,
     patch: FieldValue[],
+    messages: ChatMessage[],
   ) => Promise<void>
+  /** The transcript of a reopened draft, so it carries on rather than restarts. */
+  initialMessages?: ChatMessage[]
+  /** Reports a turn starting and finishing, so the rest of the page can wait. */
+  onThinking?: (thinking: boolean) => void
 }) {
-  const [messages, setMessages] = useState<ChatMessage[]>([OPENING])
+  const [messages, setMessages] = useState<ChatMessage[]>(
+    initialMessages?.length ? initialMessages : [OPENING],
+  )
   const [draft, setDraft] = useState('')
   const [thinking, setThinking] = useState(false)
+
+  /** A turn covers the request and everything the answer sets off. */
+  const startedThinking = (value: boolean) => {
+    setThinking(value)
+    onThinking?.(value)
+  }
   const [error, setError] = useState<string | null>(null)
   const threadRef = useRef<HTMLDivElement>(null)
 
@@ -63,13 +78,19 @@ export default function ChatPanel({
     const history = [...messages, { role: 'user' as const, content }]
     setMessages(history)
     setDraft('')
-    setThinking(true)
+    startedThinking(true)
     setError(null)
 
     try {
       const turn = await sendChat(history, spec, values)
-      setMessages([...history, { role: 'assistant', content: turn.reply }])
-      await onTurn(turn.documentType, turn.values)
+      const transcript: ChatMessage[] = [
+        ...history,
+        { role: 'assistant', content: turn.reply },
+      ]
+      setMessages(transcript)
+      // The transcript goes with the turn so the draft is saved with the
+      // conversation that produced it, not one turn behind.
+      await onTurn(turn.documentType, turn.values, transcript)
     } catch (cause) {
       // The user's message stays in the thread: they said it, and retyping it
       // to retry would be a punishment for someone else's outage.
@@ -79,7 +100,7 @@ export default function ChatPanel({
           : 'The assistant could not be reached. Try sending that again.',
       )
     } finally {
-      setThinking(false)
+      startedThinking(false)
     }
   }
 

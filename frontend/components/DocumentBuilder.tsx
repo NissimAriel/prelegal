@@ -1,12 +1,20 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { useSearchParams } from 'next/navigation'
 import ChatPanel from './ChatPanel'
 import CoverPage from './CoverPage'
 import DocumentPicker from './DocumentPicker'
 import StandardTerms from './StandardTerms'
 import { fetchDocument, type DocumentDetail } from '@/lib/documents'
-import { applyValues, type FieldValue } from '@/lib/chat'
+import { applyValues, type ChatMessage, type FieldValue } from '@/lib/chat'
+import {
+  createDraft,
+  fetchDraft,
+  saveDraft,
+  toValues,
+  type DraftDetail,
+} from '@/lib/drafts'
 import {
   carryOver,
   defaultValues,
@@ -22,16 +30,57 @@ import {
  * for it. The chat proposes changes to both and the document is a pure view of
  * them, so the preview always reflects exactly what will print.
  *
- * Nothing is loaded until the assistant has chosen a document. Starting on one
- * would be a lie about what the user asked for, and it anchors the assistant
- * to that choice — told it was already drafting an NDA, it answers a request
- * for a design partnership by writing the request into the NDA.
+ * Nothing is loaded until the assistant has chosen a document, or the user has
+ * picked one. Starting on a document would be a lie about what was asked for,
+ * and it anchors the assistant to that choice.
  */
 export default function DocumentBuilder() {
+  const draftId = useSearchParams().get('id')
   const [document, setDocument] = useState<DocumentDetail | null>(null)
   const [values, setValues] = useState<Values>({})
+  const [saved, setSaved] = useState<number | null>(null)
+  const [restored, setRestored] = useState<DraftDetail | null>(null)
+  const [ready, setReady] = useState(!draftId)
   const [error, setError] = useState<string | null>(null)
-  const [busy, setBusy] = useState(false)
+  const [loadingTemplate, setLoadingTemplate] = useState(false)
+  const [turnInFlight, setTurnInFlight] = useState(false)
+
+  // Reopening a saved draft: its document, values and transcript all come back,
+  // so the conversation continues rather than starting again.
+  //
+  // Moving between drafts changes only the query string, and Next keeps this
+  // component mounted across that — so everything it holds has to be cleared
+  // by hand. Without the reset, "start a new one" from an open draft looks
+  // blank-ish but keeps that draft's id, and the first message saves over it.
+  useEffect(() => {
+    setDocument(null)
+    setValues({})
+    setRestored(null)
+    setSaved(null)
+    setError(null)
+    setReady(!draftId)
+
+    if (!draftId) return
+    let cancelled = false
+    ;(async () => {
+      try {
+        const draft = await fetchDraft(Number(draftId))
+        const detail = await fetchDocument(draft.documentType)
+        if (cancelled) return
+        setDocument(detail)
+        setValues({ ...defaultValues(detail.spec), ...toValues(draft.values) })
+        setRestored(draft)
+        setSaved(draft.id)
+      } catch {
+        if (!cancelled) setError('Could not open that agreement.')
+      } finally {
+        if (!cancelled) setReady(true)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [draftId])
 
   /**
    * Loads a document, carrying over the values the new one also asks for.
@@ -41,7 +90,7 @@ export default function DocumentBuilder() {
    * which of them did.
    */
   const switchTo = async (documentId: string, patch: FieldValue[] = []) => {
-    setBusy(true)
+    setLoadingTemplate(true)
     try {
       const next = await fetchDocument(documentId)
       const carried = document
@@ -50,35 +99,82 @@ export default function DocumentBuilder() {
       setDocument(next)
       setValues(applyValues(next.spec, carried, patch))
       setError(null)
+      return next
     } catch {
       setError('Could not load that document’s template. Please try again.')
+      return null
     } finally {
-      setBusy(false)
+      setLoadingTemplate(false)
     }
   }
 
   /**
-   * Applies one turn: the document it named, then the values it set.
+   * Saves after every turn, so closing the tab loses nothing.
+   *
+   * A failure here is reported but not dwelt on: the work is still on screen
+   * and the next turn tries again. Losing the conversation to a save error
+   * would be worse than a draft that is a turn behind.
+   */
+  const persist = async (
+    spec: string,
+    nextValues: Values,
+    messages: ChatMessage[],
+  ) => {
+    try {
+      if (saved === null) {
+        setSaved((await createDraft(spec, nextValues, messages)).id)
+      } else {
+        await saveDraft(saved, spec, nextValues, messages)
+      }
+    } catch {
+      setError('Could not save this agreement. It is still here on screen.')
+    }
+  }
+
+  /**
+   * Applies one turn: the document it named, then the values it set, then saves.
    *
    * Order matters. A switch replaces the spec, and the values in the same turn
    * belong to the new document — applying them against the old spec would drop
    * every field the old one happens not to have.
    */
-  const onTurn = async (documentType: string | null, patch: FieldValue[]) => {
-    // Any turn that gets this far has succeeded, so a failure from an earlier
-    // one is no longer true and its banner should not still be on screen.
+  const onTurn = async (
+    documentType: string | null,
+    patch: FieldValue[],
+    messages: ChatMessage[],
+  ) => {
     setError(null)
 
-    // Still choosing. Nothing can have been captured yet, so there is nothing
-    // to apply.
+    // Still choosing, so there is no document to save the conversation against.
     if (documentType === null) return
 
     if (documentType !== document?.spec.id) {
-      await switchTo(documentType, patch)
+      const next = await switchTo(documentType, patch)
+      if (next) {
+        await persist(
+          next.spec.id,
+          applyValues(
+            next.spec,
+            document ? carryOver(next.spec, values) : defaultValues(next.spec),
+            patch,
+          ),
+          messages,
+        )
+      }
       return
     }
 
-    setValues(applyValues(document.spec, values, patch))
+    const merged = applyValues(document.spec, values, patch)
+    setValues(merged)
+    await persist(document.spec.id, merged, messages)
+  }
+
+  if (!ready) {
+    return (
+      <p className="shellStatus" role="status">
+        Opening…
+      </p>
+    )
   }
 
   const missing = document ? missingFields(document.spec, values) : []
@@ -92,9 +188,21 @@ export default function DocumentBuilder() {
           <p>Answer in your own words and the document fills itself in.</p>
         </header>
         <ChatPanel
+          key={draftId ?? 'new'}
           spec={document?.spec ?? null}
           values={values}
           onTurn={onTurn}
+          onThinking={setTurnInFlight}
+          // Only the transcript belonging to the draft in the URL right now.
+          // The `key` remounts this panel during the render that follows the
+          // navigation, which is before the effect below has cleared the
+          // previous draft — so passing `restored` unchecked would start the
+          // new conversation with the old one's messages.
+          initialMessages={
+            restored && String(restored.id) === draftId
+              ? restored.messages
+              : undefined
+          }
         />
       </aside>
 
@@ -106,7 +214,7 @@ export default function DocumentBuilder() {
               <DocumentPicker
                 selected={document?.spec.id ?? null}
                 onSelect={(id) => void switchTo(id)}
-                disabled={busy}
+                disabled={loadingTemplate || turnInFlight}
               />
             </div>
             {!document ? (

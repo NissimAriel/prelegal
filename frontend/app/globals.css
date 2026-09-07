@@ -1,24 +1,48 @@
+/* Prelegal.
+ *
+ * The palette is the brand's, set in CLAUDE.md. What carries the personality
+ * is the highlight on a filled value: Common Paper templates mark the
+ * negotiated terms inline within fixed boilerplate, and marking up variables
+ * in a provisional draft is what a lawyer does with a highlighter. That one
+ * device runs through the sign-in hero, the live document and the print-out,
+ * which is why the brand yellow is spent there and almost nowhere else.
+ */
+
 :root {
   --ui-font: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
   --doc-font: 'Iowan Old Style', 'Palatino Linotype', Palatino, Georgia, serif;
 
-  --ink: #16181d;
-  --ink-soft: #5b6270;
-  --rule: #dfe3ea;
-  --page: #ffffff;
-  --canvas: #f4f5f8;
-  --accent: #1f4fd8;
-  --accent-wash: #eaf0ff;
-  --warn: #8a5a00;
+  /* Brand, per CLAUDE.md. */
+  --blue: #209dd7;
+  --purple: #753991;
+  --navy: #032147;
+  --yellow: #ecad0a;
+  --grey: #888888;
 
-  /* Prelegal brand palette. Used by the app chrome — the sign-in screen and
-     the header. The agreement itself keeps the neutral document styling above,
-     so what prints is a legal document rather than a branded page. */
-  --brand-blue: #209dd7;
-  --brand-purple: #753991;
-  --brand-navy: #032147;
-  --brand-yellow: #ecad0a;
-  --brand-gray: #888888;
+  /* Neutrals, tinted towards the navy so the greys belong to the palette. */
+  --ink: #12233a;
+  --ink-soft: #5b6a7d;
+  --rule: #dde3ea;
+  --page: #ffffff;
+  --canvas: #f4f6f9;
+
+  /* The highlighter. Pale enough to read black text through, on screen and
+     on paper. */
+  --marker: #fdf0cd;
+  --marker-edge: #f4d98a;
+  --warn: #8a5a00;
+  --danger: #a5271b;
+
+  /* Spacing, in fours. */
+  --gap-1: 0.25rem;
+  --gap-2: 0.5rem;
+  --gap-3: 0.75rem;
+  --gap-4: 1rem;
+  --gap-6: 1.5rem;
+  --gap-8: 2rem;
+
+  --radius: 10px;
+  --radius-sm: 7px;
 }
 
 * {
@@ -117,7 +141,7 @@ body {
   padding: 0.55rem 1.1rem;
   border-radius: 7px;
   border: 1px solid transparent;
-  background: var(--accent);
+  background: var(--blue);
   color: #fff;
   cursor: pointer;
 }
@@ -169,13 +193,13 @@ body {
 
 .bubble.user {
   align-self: flex-end;
-  background: var(--brand-blue);
+  background: var(--blue);
   color: #fff;
   border-bottom-right-radius: 4px;
 }
 
 .bubble.thinking {
-  color: var(--brand-gray);
+  color: var(--grey);
   letter-spacing: 0.15em;
   animation: pulse 1.4s ease-in-out infinite;
 }
@@ -223,7 +247,7 @@ body {
 }
 
 .chatComposer textarea:focus-visible {
-  outline: 2px solid var(--brand-blue);
+  outline: 2px solid var(--blue);
   outline-offset: -1px;
   background: #fff;
 }
@@ -264,7 +288,7 @@ body {
 }
 
 .documentPicker select:hover:not(:disabled) {
-  border-color: var(--brand-blue);
+  border-color: var(--blue);
   color: var(--ink);
 }
 
@@ -274,7 +298,7 @@ body {
 }
 
 .documentActions .uncaptured {
-  color: var(--brand-gray);
+  color: var(--grey);
   font-size: 0.78rem;
   margin-top: 0.25rem;
 }
@@ -284,7 +308,7 @@ body {
   margin: 0;
   padding: 4rem 1.5rem;
   text-align: center;
-  color: var(--brand-gray);
+  color: var(--grey);
 }
 
 /* Names a value inside a section holding more than one of them. */
@@ -313,21 +337,25 @@ body {
 }
 
 .document h1 {
-  font-size: 1.5rem;
+  font-size: 1.6rem;
   text-align: center;
-  margin: 0 0 1.5rem;
+  letter-spacing: -0.01em;
+  color: var(--navy);
+  margin: 0 0 var(--gap-6);
 }
 
 /* Cover Page section headings ("Purpose", "Effective Date", …). */
 .coverSection h2 {
-  font-size: 0.98rem;
+  font-size: 1rem;
+  color: var(--navy);
   margin: 1.4rem 0 0.35rem;
 }
 
 /* The "Standard Terms" title, which opens the second part of the agreement. */
 .standardTerms h2 {
-  font-size: 1.3rem;
+  font-size: 1.35rem;
   text-align: center;
+  color: var(--navy);
   margin: 0 0 1.25rem;
 }
 
@@ -336,7 +364,7 @@ body {
 }
 
 .document a {
-  color: var(--accent);
+  color: var(--blue);
 }
 
 .document .hint {
@@ -368,8 +396,9 @@ body {
 /* No horizontal padding: it would read as a space before any punctuation that
    follows the value, e.g. "Expires 1 year from the Effective Date ." */
 .filled {
-  background: var(--accent-wash);
-  border-radius: 3px;
+  background: var(--marker);
+  box-shadow: 0 1px 0 var(--marker-edge);
+  border-radius: 2px;
   padding: 0.05em 0;
 }
 
@@ -398,7 +427,8 @@ body {
 }
 
 .signatures thead th {
-  background: #fafbfc;
+  background: #f7f9fb;
+  color: var(--navy);
   text-align: center;
   font-size: 0.8rem;
 }
@@ -449,7 +479,7 @@ body {
 }
 
 .coverpageRef.set {
-  color: var(--accent);
+  color: var(--blue);
 }
 
 .coverpageRef.awaiting {
@@ -505,11 +535,15 @@ body {
     line-height: 1.5;
   }
 
-  /* Print without the on-screen fill highlight, so the download reads as a
-     finished agreement rather than a form. */
+  /* The highlight prints. It marks which terms were filled in rather than
+     inherited from the template, which is exactly what a reviewer needs to
+     look at first — and this document says of itself that it needs reviewing.
+     `print-color-adjust` keeps browsers from helpfully dropping it. */
   .filled {
-    background: none;
-    padding: 0;
+    background: var(--marker);
+    box-shadow: none;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
   }
 
   /* The Cover Page references print as plain defined terms, and the guidance
@@ -538,7 +572,7 @@ body {
 
   /* The Standard Terms are a distinct part of the agreement — start them on
      their own page, as Common Paper's own PDFs do. */
-  .standardTermsSection {
+  .standardTermsWrap {
     break-before: page;
   }
 }
@@ -546,7 +580,7 @@ body {
 /* ---------- App chrome ---------- */
 
 .siteHeader .brand {
-  color: var(--brand-navy);
+  color: var(--navy);
 }
 
 /* Pushed to the far end of the header, away from the branding. */
@@ -558,7 +592,7 @@ body {
 }
 
 .sessionEmail {
-  color: var(--brand-gray);
+  color: var(--grey);
 }
 
 .linkButton {
@@ -567,104 +601,20 @@ body {
   padding: 0;
   border: none;
   background: none;
-  color: var(--brand-blue);
+  color: var(--blue);
   cursor: pointer;
   text-decoration: underline;
 }
 
 .linkButton:hover {
-  color: var(--brand-purple);
+  color: var(--purple);
 }
 
 /* Shown while the session is being confirmed, or while redirecting away. */
 .shellStatus {
   margin: 4rem auto;
   text-align: center;
-  color: var(--brand-gray);
-}
-
-/* ---------- Sign-in ---------- */
-
-.loginScreen {
-  min-height: 100vh;
-  display: grid;
-  place-items: center;
-  padding: 1.5rem;
-  /* A wash of the brand blue, so the way in reads as the product rather than
-     as another sheet of the document. */
-  background: linear-gradient(160deg, #eaf5fb 0%, var(--canvas) 55%);
-}
-
-.loginCard {
-  width: min(100%, 26rem);
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  padding: 2rem;
-  background: var(--page);
-  border: 1px solid var(--rule);
-  border-radius: 12px;
-  box-shadow: 0 8px 30px rgb(3 33 71 / 8%);
-}
-
-.loginBrand {
-  margin: 0;
-  font-size: 1.05rem;
-  font-weight: 650;
-  letter-spacing: -0.01em;
-  color: var(--brand-navy);
-}
-
-/* The yellow reads as an accent here and nowhere else, so it is scoped to the
-   one rule rather than promoted into a shared underline utility. */
-.loginBrand::after {
-  content: '';
-  display: block;
-  width: 2rem;
-  height: 3px;
-  margin-top: 0.4rem;
-  border-radius: 2px;
-  background: var(--brand-yellow);
-}
-
-.loginCard h1 {
-  margin: 0.75rem 0 0;
-  font-size: 1.5rem;
-  letter-spacing: -0.02em;
-  color: var(--brand-navy);
-}
-
-.loginIntro {
-  margin: 0 0 0.75rem;
-  color: var(--brand-gray);
-  font-size: 0.9375rem;
-}
-
-.loginCard label {
-  font-size: 0.8125rem;
-  font-weight: 550;
-  color: var(--ink-soft);
-}
-
-.loginCard input {
-  font: inherit;
-  padding: 0.55rem 0.7rem;
-  border: 1px solid var(--rule);
-  border-radius: 7px;
-  background: var(--page);
-  color: var(--ink);
-}
-
-.loginCard input:focus-visible {
-  outline: 2px solid var(--brand-blue);
-  outline-offset: 1px;
-  border-color: transparent;
-}
-
-.loginError {
-  margin: 0;
-  font-size: 0.875rem;
-  color: #a5271b;
+  color: var(--grey);
 }
 
 .submitButton {
@@ -674,7 +624,7 @@ body {
   padding: 0.6rem 1.1rem;
   border: 1px solid transparent;
   border-radius: 7px;
-  background: var(--brand-purple);
+  background: var(--purple);
   color: #fff;
   cursor: pointer;
 }
@@ -687,4 +637,325 @@ body {
   background: #e7e9ef;
   color: #9aa1ae;
   cursor: not-allowed;
+}
+
+/* ---------- The draft notice ---------- */
+
+/* Printed as well as shown. The PDF is what leaves here and reaches a
+   counterparty, so a warning that lives only on screen is absent from the one
+   artifact that travels. Set in the UI face, not the document's serif: it is
+   not part of the agreement and should not read as though it were. */
+.draftNotice {
+  font-family: var(--ui-font);
+  font-size: 0.78rem;
+  line-height: 1.5;
+  color: var(--warn);
+  background: var(--marker);
+  border-left: 3px solid var(--yellow);
+  padding: var(--gap-3) var(--gap-4);
+  margin: 0 0 var(--gap-6);
+  print-color-adjust: exact;
+  -webkit-print-color-adjust: exact;
+}
+
+/* ---------- Sign in ---------- */
+
+.authScreen {
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(320px, 27rem);
+  align-items: center;
+  gap: clamp(2rem, 6vw, 5rem);
+  padding: clamp(1.5rem, 5vw, 4rem);
+  background: var(--canvas);
+}
+
+@media (max-width: 880px) {
+  .authScreen {
+    grid-template-columns: 1fr;
+    align-content: center;
+  }
+  /* The sample page explains the product; on a phone the form comes first. */
+  .authIntro {
+    order: 2;
+  }
+}
+
+.authIntro {
+  max-width: 34rem;
+  justify-self: end;
+}
+
+.authBrand {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  color: var(--navy);
+}
+
+.authIntro h1 {
+  margin: var(--gap-4) 0 var(--gap-3);
+  font-size: clamp(1.9rem, 4vw, 2.6rem);
+  line-height: 1.1;
+  letter-spacing: -0.025em;
+  color: var(--navy);
+}
+
+.authLede {
+  margin: 0 0 var(--gap-8);
+  max-width: 32rem;
+  color: var(--ink-soft);
+  font-size: 1rem;
+  line-height: 1.6;
+}
+
+/* A fragment of a cover page: the thing the product actually makes. */
+.samplePage {
+  background: var(--page);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+  padding: var(--gap-6) clamp(1.25rem, 3vw, 2rem);
+  font-family: var(--doc-font);
+  box-shadow: 0 1px 2px rgb(3 33 71 / 6%);
+}
+
+.samplePageTitle {
+  margin: 0 0 var(--gap-4);
+  text-align: center;
+  font-size: 1.05rem;
+  color: var(--navy);
+}
+
+.samplePage dl {
+  margin: 0;
+  display: grid;
+  grid-template-columns: minmax(9rem, auto) 1fr;
+  gap: var(--gap-2) var(--gap-4);
+  font-size: 0.9rem;
+}
+
+.samplePage dt {
+  color: var(--navy);
+  font-weight: 600;
+}
+
+.samplePage dd {
+  margin: 0;
+  color: var(--ink);
+}
+
+/* The motif, in the one place it has to explain itself without any help. */
+.samplePage mark {
+  background: var(--marker);
+  box-shadow: 0 1px 0 var(--marker-edge);
+  border-radius: 2px;
+  color: inherit;
+  padding: 0.05em 0;
+}
+
+.authForm {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-2);
+  padding: var(--gap-8);
+  background: var(--page);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+  box-shadow: 0 8px 30px rgb(3 33 71 / 7%);
+}
+
+.authForm h2 {
+  margin: 0 0 var(--gap-3);
+  font-size: 1.25rem;
+  letter-spacing: -0.015em;
+  color: var(--navy);
+}
+
+.authForm label {
+  margin-top: var(--gap-2);
+  font-size: 0.8125rem;
+  font-weight: 550;
+  color: var(--ink-soft);
+}
+
+.authForm input {
+  font: inherit;
+  padding: 0.55rem 0.7rem;
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-sm);
+  background: var(--page);
+  color: var(--ink);
+}
+
+.authForm input:focus-visible {
+  outline: 2px solid var(--blue);
+  outline-offset: 1px;
+  border-color: transparent;
+}
+
+.authHint {
+  margin: 0;
+  font-size: 0.78rem;
+  color: var(--grey);
+}
+
+.authError {
+  margin: var(--gap-2) 0 0;
+  font-size: 0.875rem;
+  color: var(--danger);
+}
+
+.authSwitch {
+  margin-top: var(--gap-3);
+  align-self: center;
+}
+
+/* ---------- Saved agreements ---------- */
+
+.drafts {
+  max-width: 60rem;
+  margin: 0 auto;
+  padding: var(--gap-8) var(--gap-6) 4rem;
+}
+
+.draftsError {
+  margin: 0 0 var(--gap-4);
+  padding: var(--gap-3) var(--gap-4);
+  font-size: 0.875rem;
+  color: var(--danger);
+  background: #fdf2f1;
+  border: 1px solid #f2d5d1;
+  border-radius: var(--radius-sm);
+}
+
+.draftsHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--gap-4);
+  flex-wrap: wrap;
+  margin-bottom: var(--gap-6);
+}
+
+.draftsHeader h1 {
+  margin: 0;
+  font-size: 1.5rem;
+  letter-spacing: -0.02em;
+  color: var(--navy);
+}
+
+/* `submitButton` is a <button> elsewhere and an <a> here; the link needs the
+   text treatment a button gets for free. */
+/* `submitButton` is a <button> in a form elsewhere and a link here. The text
+   treatment a button gets for free has to be restated, and the margin that
+   spaces it from the input above it has no input to follow. */
+a.submitButton {
+  text-decoration: none;
+  display: inline-block;
+  margin-top: 0;
+}
+
+.draftsEmpty {
+  padding: 4rem var(--gap-6);
+  text-align: center;
+  color: var(--ink-soft);
+  background: var(--page);
+  border: 1px dashed var(--rule);
+  border-radius: var(--radius);
+}
+
+.draftsEmpty p:first-child {
+  margin: 0 0 var(--gap-2);
+  font-size: 1.05rem;
+  color: var(--navy);
+}
+
+.draftsEmpty p:last-child {
+  margin: 0 auto;
+  max-width: 28rem;
+}
+
+/* Rows, not cards: what tells one agreement from another is who and when,
+   which reads faster down a column than across a grid. */
+.draftRows {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  background: var(--page);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.draftRows li {
+  display: flex;
+  align-items: center;
+  gap: var(--gap-4);
+  padding-right: var(--gap-4);
+  border-top: 1px solid var(--rule);
+}
+
+.draftRows li:first-child {
+  border-top: none;
+}
+
+.draftRows li:hover {
+  background: #f8fafc;
+}
+
+.draftRow {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-1);
+  padding: var(--gap-4);
+  text-decoration: none;
+  color: inherit;
+  min-width: 0;
+}
+
+.draftTitle {
+  font-weight: 550;
+  color: var(--navy);
+}
+
+.draftRow:hover .draftTitle {
+  color: var(--blue);
+}
+
+.draftMeta {
+  font-size: 0.8125rem;
+  color: var(--grey);
+}
+
+.draftDelete {
+  flex: none;
+  color: var(--grey);
+}
+
+.draftDelete:hover {
+  color: var(--danger);
+}
+
+/* ---------- Header navigation ---------- */
+
+.siteHeaderSession a {
+  font-size: 0.875rem;
+  color: var(--ink-soft);
+  text-decoration: none;
+}
+
+.siteHeaderSession a:hover {
+  color: var(--blue);
+  text-decoration: underline;
+}
+
+/* Keyboard focus must be visible on everything that takes it. */
+a:focus-visible,
+button:focus-visible,
+select:focus-visible {
+  outline: 2px solid var(--blue);
+  outline-offset: 2px;
+  border-radius: 3px;
 }

@@ -37,9 +37,35 @@ def client(tmp_path: Path, frontend_dir: Path) -> Iterator[TestClient]:
         yield test_client
 
 
+#: Used by every fixture that needs an account. Long enough to pass validation
+#: and obviously not a real secret.
+PASSWORD = "correct-horse-battery"
+
+
+def register(client: TestClient, email: str) -> tuple[dict[str, str], dict]:
+    """Registers an account and returns its auth headers and user record."""
+    body = client.post(
+        "/api/auth/signup", json={"email": email, "password": PASSWORD}
+    ).json()
+    return {"Authorization": f"Bearer {body['token']}"}, body["user"]
+
+
 @pytest.fixture
 def signed_in(client: TestClient) -> tuple[TestClient, dict[str, str], dict]:
     """A client, auth headers for a signed-in user, and that user's record."""
-    response = client.post("/api/auth/login", json={"email": "ada@example.com"})
-    body = response.json()
-    return client, {"Authorization": f"Bearer {body['token']}"}, body["user"]
+    headers, user = register(client, "ada@example.com")
+    return client, headers, user
+
+
+@pytest.fixture
+def two_users(
+    client: TestClient,
+) -> tuple[TestClient, dict[str, str], dict[str, str]]:
+    """A client and headers for two separate accounts.
+
+    For the tests that matter most here: whether one user can reach another's
+    drafts.
+    """
+    ada, _ = register(client, "ada@example.com")
+    grace, _ = register(client, "grace@example.com")
+    return client, ada, grace

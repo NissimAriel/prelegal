@@ -84,10 +84,15 @@ export default function CoverPage({
   document: DocumentDetail
   values: Values
 }) {
-  const { spec, preamble, attribution } = document
+  const { spec, preamble, attribution, disclaimer } = document
 
   return (
     <article className="coverPage">
+      {/* Above the title, and printed rather than hidden with the app chrome:
+          the PDF is what leaves here and reaches a counterparty, so a warning
+          that lives only on screen is absent from the artifact that travels. */}
+      <p className="draftNotice">{disclaimer}</p>
+
       <h1>{spec.title}</h1>
 
       {preamble && (

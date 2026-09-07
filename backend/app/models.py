@@ -13,16 +13,22 @@ from pydantic.alias_generators import to_camel
 from .documents import SPECS
 
 
-class LoginRequest(BaseModel):
-    """Credentials for `POST /api/auth/login`.
+#: Long enough to be worth something, with no composition rules — length is
+#: what makes a password hard to guess, and rules mostly make them predictable.
+MIN_PASSWORD_LENGTH = 8
 
-    There is no password field. Login is a stub for the V1 foundation: any
-    valid email address is accepted and identifies a user. Adding real
-    authentication means adding the field and a hash check here and in
-    `routers/auth.login`, with no change to the client contract's shape.
-    """
+#: scrypt hashes whatever it is given, so an unbounded password is unbounded
+#: work for the server.
+MAX_PASSWORD_LENGTH = 256
 
-    email: EmailStr = Field(description="Identifies the user. Never verified.")
+
+class Credentials(BaseModel):
+    """An email address and a password, for signing up or signing in."""
+
+    email: EmailStr
+    password: str = Field(
+        min_length=MIN_PASSWORD_LENGTH, max_length=MAX_PASSWORD_LENGTH
+    )
 
 
 class User(BaseModel):
@@ -133,3 +139,29 @@ class ChatResponse(Camel):
     #: still to choose one.
     document_type: str | None
     values: list[FieldValue]
+
+
+class DraftSummary(Camel):
+    """One row in the list of a user's drafts."""
+
+    id: int
+    document_type: str
+    #: Derived from the parties, so the list reads as agreements rather than
+    #: as template names repeated.
+    title: str
+    updated_at: str
+
+
+class DraftBody(Camel):
+    """What the client sends when saving a draft."""
+
+    document_type: str
+    values: list[FieldValue] = Field(default_factory=list)
+    messages: list[ChatMessage] = Field(default_factory=list)
+
+
+class DraftDetail(DraftSummary):
+    """A saved draft, with everything needed to carry on where it left off."""
+
+    values: list[FieldValue]
+    messages: list[ChatMessage]

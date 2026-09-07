@@ -98,6 +98,18 @@ def extract_cover_page_prose(markdown: str) -> CoverPageProse:
     return CoverPageProse(preamble, attribution)
 
 
+#: Printed on every document and shown in the app.
+#:
+#: Kept here beside the other prose the documents carry, so the wording has one
+#: source. It is on the printed page as well as the screen deliberately: the
+#: PDF is what leaves the app and reaches a counterparty, and a warning that
+#: exists only in the interface is absent from the one artifact that travels.
+DRAFT_NOTICE = (
+    "This is a draft generated from a template. It has not been reviewed by a "
+    "lawyer, and nothing here is legal advice. Have it reviewed by a qualified "
+    "lawyer before signing or sending it."
+)
+
 #: Attribution for documents with no cover page template of their own, which
 #: is every one but the Mutual NDA. CC BY 4.0 requires the credit regardless;
 #: catalog.json records the provider and licence this states.
