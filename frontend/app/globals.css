@@ -617,90 +617,6 @@ body {
   color: var(--grey);
 }
 
-/* ---------- Sign-in ---------- */
-
-.loginScreen {
-  min-height: 100vh;
-  display: grid;
-  place-items: center;
-  padding: 1.5rem;
-  /* A wash of the brand blue, so the way in reads as the product rather than
-     as another sheet of the document. */
-  background: linear-gradient(160deg, #eaf5fb 0%, var(--canvas) 55%);
-}
-
-.loginCard {
-  width: min(100%, 26rem);
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  padding: 2rem;
-  background: var(--page);
-  border: 1px solid var(--rule);
-  border-radius: 12px;
-  box-shadow: 0 8px 30px rgb(3 33 71 / 8%);
-}
-
-.loginBrand {
-  margin: 0;
-  font-size: 1.05rem;
-  font-weight: 650;
-  letter-spacing: -0.01em;
-  color: var(--navy);
-}
-
-/* The yellow reads as an accent here and nowhere else, so it is scoped to the
-   one rule rather than promoted into a shared underline utility. */
-.loginBrand::after {
-  content: '';
-  display: block;
-  width: 2rem;
-  height: 3px;
-  margin-top: 0.4rem;
-  border-radius: 2px;
-  background: var(--yellow);
-}
-
-.loginCard h1 {
-  margin: 0.75rem 0 0;
-  font-size: 1.5rem;
-  letter-spacing: -0.02em;
-  color: var(--navy);
-}
-
-.loginIntro {
-  margin: 0 0 0.75rem;
-  color: var(--grey);
-  font-size: 0.9375rem;
-}
-
-.loginCard label {
-  font-size: 0.8125rem;
-  font-weight: 550;
-  color: var(--ink-soft);
-}
-
-.loginCard input {
-  font: inherit;
-  padding: 0.55rem 0.7rem;
-  border: 1px solid var(--rule);
-  border-radius: 7px;
-  background: var(--page);
-  color: var(--ink);
-}
-
-.loginCard input:focus-visible {
-  outline: 2px solid var(--blue);
-  outline-offset: 1px;
-  border-color: transparent;
-}
-
-.loginError {
-  margin: 0;
-  font-size: 0.875rem;
-  color: #a5271b;
-}
-
 .submitButton {
   font: inherit;
   font-weight: 550;
@@ -903,6 +819,16 @@ body {
   padding: var(--gap-8) var(--gap-6) 4rem;
 }
 
+.draftsError {
+  margin: 0 0 var(--gap-4);
+  padding: var(--gap-3) var(--gap-4);
+  font-size: 0.875rem;
+  color: var(--danger);
+  background: #fdf2f1;
+  border: 1px solid #f2d5d1;
+  border-radius: var(--radius-sm);
+}
+
 .draftsHeader {
   display: flex;
   align-items: center;
@@ -921,9 +847,13 @@ body {
 
 /* `submitButton` is a <button> elsewhere and an <a> here; the link needs the
    text treatment a button gets for free. */
+/* `submitButton` is a <button> in a form elsewhere and a link here. The text
+   treatment a button gets for free has to be restated, and the margin that
+   spaces it from the input above it has no input to follow. */
 a.submitButton {
   text-decoration: none;
   display: inline-block;
+  margin-top: 0;
 }
 
 .draftsEmpty {

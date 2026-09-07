@@ -33,6 +33,7 @@ export default function ChatPanel({
   spec,
   values,
   onTurn,
+  onThinking,
   initialMessages,
 }: {
   /** Null until the assistant has chosen which document to draft. */
@@ -45,12 +46,20 @@ export default function ChatPanel({
   ) => Promise<void>
   /** The transcript of a reopened draft, so it carries on rather than restarts. */
   initialMessages?: ChatMessage[]
+  /** Reports a turn starting and finishing, so the rest of the page can wait. */
+  onThinking?: (thinking: boolean) => void
 }) {
   const [messages, setMessages] = useState<ChatMessage[]>(
     initialMessages?.length ? initialMessages : [OPENING],
   )
   const [draft, setDraft] = useState('')
   const [thinking, setThinking] = useState(false)
+
+  /** A turn covers the request and everything the answer sets off. */
+  const startedThinking = (value: boolean) => {
+    setThinking(value)
+    onThinking?.(value)
+  }
   const [error, setError] = useState<string | null>(null)
   const threadRef = useRef<HTMLDivElement>(null)
 
@@ -69,7 +78,7 @@ export default function ChatPanel({
     const history = [...messages, { role: 'user' as const, content }]
     setMessages(history)
     setDraft('')
-    setThinking(true)
+    startedThinking(true)
     setError(null)
 
     try {
@@ -91,7 +100,7 @@ export default function ChatPanel({
           : 'The assistant could not be reached. Try sending that again.',
       )
     } finally {
-      setThinking(false)
+      startedThinking(false)
     }
   }
 

@@ -42,11 +42,24 @@ export default function DocumentBuilder() {
   const [restored, setRestored] = useState<DraftDetail | null>(null)
   const [ready, setReady] = useState(!draftId)
   const [error, setError] = useState<string | null>(null)
-  const [busy, setBusy] = useState(false)
+  const [loadingTemplate, setLoadingTemplate] = useState(false)
+  const [turnInFlight, setTurnInFlight] = useState(false)
 
   // Reopening a saved draft: its document, values and transcript all come back,
   // so the conversation continues rather than starting again.
+  //
+  // Moving between drafts changes only the query string, and Next keeps this
+  // component mounted across that — so everything it holds has to be cleared
+  // by hand. Without the reset, "start a new one" from an open draft looks
+  // blank-ish but keeps that draft's id, and the first message saves over it.
   useEffect(() => {
+    setDocument(null)
+    setValues({})
+    setRestored(null)
+    setSaved(null)
+    setError(null)
+    setReady(!draftId)
+
     if (!draftId) return
     let cancelled = false
     ;(async () => {
@@ -77,7 +90,7 @@ export default function DocumentBuilder() {
    * which of them did.
    */
   const switchTo = async (documentId: string, patch: FieldValue[] = []) => {
-    setBusy(true)
+    setLoadingTemplate(true)
     try {
       const next = await fetchDocument(documentId)
       const carried = document
@@ -91,7 +104,7 @@ export default function DocumentBuilder() {
       setError('Could not load that document’s template. Please try again.')
       return null
     } finally {
-      setBusy(false)
+      setLoadingTemplate(false)
     }
   }
 
@@ -175,10 +188,21 @@ export default function DocumentBuilder() {
           <p>Answer in your own words and the document fills itself in.</p>
         </header>
         <ChatPanel
+          key={draftId ?? 'new'}
           spec={document?.spec ?? null}
           values={values}
           onTurn={onTurn}
-          initialMessages={restored?.messages}
+          onThinking={setTurnInFlight}
+          // Only the transcript belonging to the draft in the URL right now.
+          // The `key` remounts this panel during the render that follows the
+          // navigation, which is before the effect below has cleared the
+          // previous draft — so passing `restored` unchecked would start the
+          // new conversation with the old one's messages.
+          initialMessages={
+            restored && String(restored.id) === draftId
+              ? restored.messages
+              : undefined
+          }
         />
       </aside>
 
@@ -190,7 +214,7 @@ export default function DocumentBuilder() {
               <DocumentPicker
                 selected={document?.spec.id ?? null}
                 onSelect={(id) => void switchTo(id)}
-                disabled={busy}
+                disabled={loadingTemplate || turnInFlight}
               />
             </div>
             {!document ? (

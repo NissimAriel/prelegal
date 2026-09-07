@@ -26,6 +26,7 @@ export default function DraftList() {
     // Deleting is the one action here where waiting feels broken.
     const before = drafts ?? []
     setDrafts(before.filter((other) => other.id !== draft.id))
+    setError(null)
     try {
       await deleteDraft(draft.id)
     } catch {
@@ -34,15 +35,13 @@ export default function DraftList() {
     }
   }
 
-  if (error) {
-    return (
+  // A load failure is the only one that leaves nothing to show.
+  if (drafts === null) {
+    return error ? (
       <p className="shellStatus" role="alert">
         {error}
       </p>
-    )
-  }
-  if (drafts === null) {
-    return (
+    ) : (
       <p className="shellStatus" role="status">
         Loading…
       </p>
@@ -51,6 +50,15 @@ export default function DraftList() {
 
   return (
     <main className="drafts">
+      {/* Reported above the list rather than in place of it: a delete that
+          failed says nothing about the other agreements, and replacing them
+          with one line leaves no way back but a reload. */}
+      {error && (
+        <p className="draftsError" role="alert">
+          {error}
+        </p>
+      )}
+
       <header className="draftsHeader">
         <h1>Your agreements</h1>
         <Link className="submitButton" href="/draft/">
