@@ -23,21 +23,33 @@ function Value({ text, filled }: { text: string; filled: boolean }) {
   return <span className={filled ? 'filled' : 'unfilled'}>{text}</span>
 }
 
-/** One field within a section: its prefix, if any, then its value. */
+/**
+ * One field within a section: what identifies it, then its value.
+ *
+ * How a field is identified depends on the company it keeps. Alone in its
+ * section the heading above already names it, and a second label would just
+ * repeat it. Sharing a section it needs one of its own — otherwise a section
+ * like Acceptance prints three bare values with nothing to say which is the
+ * rejection period and which the resubmission period. A field carrying a
+ * prefix ("Governing Law: ") is already named by that.
+ */
 function Field({
   spec,
   field,
   values,
+  labelled,
 }: {
   spec: DocumentSpec
   field: FieldSpec
   values: Values
+  labelled: boolean
 }) {
   const { cover, filled } = renderField(spec, field, values)
-  const long = field.type === 'longText'
+  const showLabel = labelled && !field.prefix && field.label
 
   return (
-    <p className={long ? 'longValue' : undefined}>
+    <p className={field.type === 'longText' ? 'longValue' : undefined}>
+      {showLabel && <span className="fieldName">{field.label}</span>}
       {field.prefix}
       <Value text={cover} filled={filled} />
     </p>
@@ -94,7 +106,13 @@ export default function CoverPage({
           {section.fieldIds.map((id) => {
             const field = spec.fields.find((f) => f.id === id)
             return field ? (
-              <Field key={id} spec={spec} field={field} values={values} />
+              <Field
+                key={id}
+                spec={spec}
+                field={field}
+                values={values}
+                labelled={section.fieldIds.length > 1}
+              />
             ) : null
           })}
         </section>

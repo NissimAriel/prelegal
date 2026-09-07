@@ -258,6 +258,15 @@ body {
   color: var(--brand-gray);
 }
 
+/* Names a value inside a section holding more than one of them. */
+.coverSection .fieldName {
+  font-family: var(--ui-font);
+  font-size: 0.72rem;
+  font-weight: 550;
+  color: var(--ink-soft);
+  display: block;
+}
+
 /* Free-text values keep the line breaks the user actually typed. */
 .coverSection .longValue {
   white-space: pre-wrap;

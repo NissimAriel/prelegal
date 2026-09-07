@@ -39,6 +39,10 @@ export default function DocumentBuilder() {
    * every field the old one happens not to have.
    */
   const onTurn = async (documentType: string | null, patch: FieldValue[]) => {
+    // Any turn that gets this far has succeeded, so a failure from an earlier
+    // one is no longer true and its banner should not still be on screen.
+    setError(null)
+
     // Still choosing. Nothing can have been captured yet, so there is nothing
     // to apply.
     if (documentType === null) return
@@ -53,7 +57,6 @@ export default function DocumentBuilder() {
           : defaultValues(next.spec)
         setDocument(next)
         setValues(applyValues(next.spec, carried, patch))
-        setError(null)
       } catch {
         setError(
           'Could not load that document’s template. Please try again.',

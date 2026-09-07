@@ -98,9 +98,9 @@ def extract_cover_page_prose(markdown: str) -> CoverPageProse:
     return CoverPageProse(preamble, attribution)
 
 
-#: Attribution for documents whose template carries none of its own. Five do
-#: not, and CC BY 4.0 requires the credit regardless; catalog.json records the
-#: provider and licence this states.
+#: Attribution for documents with no cover page template of their own, which
+#: is every one but the Mutual NDA. CC BY 4.0 requires the credit regardless;
+#: catalog.json records the provider and licence this states.
 GENERIC_ATTRIBUTION = (
     "Common Paper {name} free to use under "
     "[CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)."

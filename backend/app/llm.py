@@ -161,7 +161,10 @@ def _field_line(field: FieldSpec) -> str:
                 f"Starts at `{field.default}` — confirm it with the user "
                 "rather than assuming it"
             )
-        elif not any("ptional" in note for note in notes):
+        elif not field.guidance:
+            # Only a fallback. A field with guidance of its own has already
+            # said how it should be treated, and some optional fields do want
+            # asking about — an SLA with no uptime target is a strange SLA.
             notes.append("Optional — do not push for it")
 
     return ". ".join([head, *notes]) + "."
@@ -189,7 +192,11 @@ def system_prompt(spec: DocumentSpec | None) -> str:
             CONDUCT,
             f"Documents you can generate:\n{_catalogue()}",
             CHOOSING,
-            f"You are currently drafting: {spec.name}.\n{spec.description}",
+            (
+                f"You are currently drafting: {spec.name}.\n{spec.description}\n"
+                f'In conversation call it "the {spec.short_name}", which is what '
+                "the document calls itself."
+            ),
             (
                 f"The two signatories are called {spec.parties[0]} and "
                 f"{spec.parties[1]}. Each needs a print name, a company and a "
