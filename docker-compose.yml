@@ -2,6 +2,11 @@ services:
   prelegal:
     build: .
     container_name: prelegal
+    # OPENROUTER_API_KEY, for the AI chat. The file is gitignored and never
+    # copied into the image, so the key stays on the host and reaches the
+    # container only as an environment variable at run time.
+    env_file:
+      - .env
     ports:
       - '8000:8000'
     restart: unless-stopped

@@ -10,8 +10,9 @@ from contextlib import asynccontextmanager
 
 from fastapi import APIRouter, FastAPI
 
+from .config import settings
 from .db import reset_database
-from .routers import auth, health
+from .routers import auth, chat, health
 from .static import mount_frontend
 
 logging.basicConfig(level=logging.INFO)
@@ -20,7 +21,18 @@ logger = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
-    """Recreates the database from scratch on every startup."""
+    """Recreates the database, and refuses to start without an API key.
+
+    The chat is the only way to fill in an agreement, so a missing key means
+    there is no product to serve. Better to say so on the way up than to let
+    every conversation fail at its first message.
+    """
+    if not settings.openrouter_api_key:
+        raise RuntimeError(
+            "OPENROUTER_API_KEY is not set, so the AI chat cannot run. Put it "
+            "in the repo-root .env file (see README)."
+        )
+
     reset_database()
     logger.info("Database initialized.")
     yield
@@ -42,6 +54,7 @@ def create_app() -> FastAPI:
     api = APIRouter(prefix="/api")
     api.include_router(health.router)
     api.include_router(auth.router)
+    api.include_router(chat.router)
     app.include_router(api)
 
     # Last: the frontend mount matches every path, so it must not shadow the API.

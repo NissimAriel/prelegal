@@ -45,12 +45,17 @@ const emptyParty = (): Party => ({
 })
 
 /**
- * Starting values for a new agreement. The purpose and term defaults match the
- * suggested values printed in the Common Paper Cover Page template.
+ * Starting values for a new agreement. The term defaults match the suggested
+ * values printed in the Common Paper Cover Page template.
+ *
+ * The purpose deliberately starts empty even though the template suggests one.
+ * The assistant is told which required fields are still blank and asks about
+ * those; a pre-filled purpose would therefore never be asked about, and the
+ * suggested wording would end up in the agreement in place of the reason the
+ * user actually gave.
  */
 export const defaultFields = (): MndaFields => ({
-  purpose:
-    'Evaluating whether to enter into a business relationship with the other party.',
+  purpose: '',
   effectiveDate: '',
   termType: 'expires',
   termYears: 1,
@@ -146,4 +151,17 @@ export function termOfConfidentiality(fields: MndaFields): TermPhrasing {
     return { cover: `${span}.`, reference: span }
   }
   return { cover: 'In perpetuity.', reference: 'perpetuity' }
+}
+
+/**
+ * Keeps a term length within the 1-99 years the agreement can sensibly state.
+ *
+ * Anything unusable becomes 1 rather than being rejected: a term is always
+ * printed, so there is no way to render "no value" for one.
+ */
+export function clampYears(value: unknown): number {
+  const parsed =
+    typeof value === 'number' ? value : Number.parseInt(String(value), 10)
+  if (!Number.isFinite(parsed)) return 1
+  return Math.min(99, Math.max(1, Math.trunc(parsed)))
 }

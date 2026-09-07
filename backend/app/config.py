@@ -8,8 +8,15 @@ sets to point at the paths it actually uses.
 import os
 from pathlib import Path
 
+from dotenv import load_dotenv
+
 # `backend/app/config.py` -> `backend/` -> repo root.
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
+
+# The repo-root `.env` holds OPENROUTER_API_KEY. It is gitignored and absent in
+# the Docker image, where compose injects the same variable from the host's
+# copy instead, so a missing file here is normal rather than an error.
+load_dotenv(REPO_ROOT / ".env")
 
 
 def _path_from_env(name: str, default: Path) -> Path:
@@ -33,6 +40,8 @@ class Settings:
         self.frontend_dir = _path_from_env(
             "PRELEGAL_FRONTEND_DIR", REPO_ROOT / "frontend" / "out"
         )
+        #: Read by LiteLLM. Checked at startup — see `main.lifespan`.
+        self.openrouter_api_key = os.environ.get("OPENROUTER_API_KEY", "")
 
 
 settings = Settings()

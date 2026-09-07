@@ -42,7 +42,11 @@ async function errorMessage(response: Response): Promise<string> {
   return `Request failed (${response.status}).`
 }
 
-async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
+/** Calls the API, attaching the session token and unwrapping errors. */
+export async function request<T>(
+  path: string,
+  init: RequestInit = {},
+): Promise<T> {
   const token = getToken()
   const response = await fetch(`/api${path}`, {
     ...init,
