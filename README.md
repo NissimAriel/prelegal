@@ -29,8 +29,10 @@ scripts\stop-windows.ps1
 
 Then open <http://localhost:8000>. Sign in with any email address — there is no
 authentication yet, and the session it creates lasts until the app restarts.
-Describe the NDA you want in your own words and the assistant fills the
-document in as you talk.
+Describe what you need in your own words: the assistant picks the right
+template from the eleven below and fills it in as you talk. Ask for something
+it has no template for and it will say so, and offer the closest thing it can
+draft.
 
 ## How it fits together
 
@@ -42,7 +44,12 @@ Node at runtime and no CORS to configure.
 | --- | --- | --- |
 | `/api/*` | `backend/` | FastAPI, a [uv](https://docs.astral.sh/uv/) project |
 | `/*` | `frontend/` | Next.js, built with `output: 'export'` |
-| — | `templates/` | The Common Paper agreements, read at build time |
+| — | `templates/` | The Common Paper agreements, served by the API |
+
+Each document type is described by a spec in `backend/app/documents/`, listing
+the values it needs and how they render onto a cover page. Those specs drive
+everything: the assistant's prompt, the live preview, and what counts as
+complete. Adding a document type means adding a spec, not writing components.
 
 The assistant runs on `openai/gpt-oss-120b` via OpenRouter, pinned to Cerebras
 as the inference provider. Conversations are not stored: the browser holds the

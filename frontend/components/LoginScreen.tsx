@@ -6,7 +6,7 @@ import { ApiError, login } from '@/lib/api'
 import { getToken, setToken } from '@/lib/session'
 
 /** Where a successful sign-in lands. The only page in the product so far. */
-const HOME = '/mnda/'
+const HOME = '/draft/'
 
 /**
  * The sign-in screen.

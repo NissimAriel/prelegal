@@ -9,11 +9,6 @@ WORKDIR /src/frontend
 COPY frontend/package.json frontend/package-lock.json ./
 RUN npm ci
 
-# `templates/` sits beside `frontend/` because the build reads the legal text
-# from there with `fs` (see frontend/lib/templates.ts). It has to be copied
-# before the build, not into the runtime image, since `output: 'export'` bakes
-# the text into the HTML.
-COPY templates /src/templates
 COPY frontend ./
 RUN npm run build
 
@@ -28,6 +23,7 @@ ENV PYTHONUNBUFFERED=1 \
     UV_COMPILE_BYTECODE=1 \
     UV_LINK_MODE=copy \
     PRELEGAL_FRONTEND_DIR=/app/frontend/out \
+    PRELEGAL_TEMPLATES_DIR=/app/templates \
     PRELEGAL_DATABASE_PATH=/app/data/prelegal.db
 
 WORKDIR /app/backend
@@ -38,6 +34,11 @@ RUN uv sync --frozen --no-dev --no-install-project
 
 COPY backend ./
 COPY --from=frontend /src/frontend/out /app/frontend/out
+
+# The legal templates are read at request time now, not baked into the export:
+# there are eleven documents, and serving one should not mean shipping a quarter
+# of a megabyte of contract text to every visitor.
+COPY templates /app/templates
 
 ENV PATH="/app/backend/.venv/bin:$PATH"
 
